@@ -1,0 +1,6 @@
+{
+  "name": "Natal — CS Roadmap Learning OS",
+  "description": "A high-performance AI Systems & Infrastructure learning OS with SM-2 spaced repetition, cognitive budgeting, architecture tutor, and comprehensive engineering curriculum.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

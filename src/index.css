@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #050505;
+  --bg-subtle: #080808;
+  --bg-card: #0d0d0d;
+  --bg-card-hover: #121212;
+  --bg-elevated: #141414;
+  --border: rgba(255, 255, 255, 0.05);
+  --border-subtle: rgba(255, 255, 255, 0.03);
+  --border-hover: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --fa: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --amber: #F59E0B;
+  --emerald: #10B981;
+  --rose: #EF4444;
+  --cyan: #06B6D4;
+  --purple: #8B5CF6;
+}
+
+body {
+  font-family: var(--font);
+  background-color: var(--bg);
+  color: #ededed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+.font-fa {
+  font-family: var(--fa);
+}
+
+.font-sans {
+  font-family: var(--font);
+}
+
+.font-mono {
+  font-family: var(--mono);
+}
+
+/* Custom Sleek Minimal Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Harmonious Linear Dark Cards */
+.linear-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.5), 0 1px 3px -1px rgba(0, 0, 0, 0.3);
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+}
+
+.linear-card:hover {
+  border-color: var(--border-hover);
+}
+
+.linear-card-flat {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+}
+
+.linear-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.2px;
+}
+
+/* Academic Lecture Typography & Mobile-First Section Formatting */
+.lecture-prose {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+.lecture-prose h1 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.5rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+}
+
+.lecture-prose h2 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  margin-top: 1.35rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+}
+
+.lecture-prose h3 {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #e5e7eb;
+  margin-top: 0.9rem;
+  margin-bottom: 0.35rem;
+  line-height: 1.4;
+}
+
+.lecture-prose p {
+  margin-bottom: 0.65rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.8rem;
+}
+
+.lecture-prose ul, .lecture-prose ol {
+  margin-bottom: 0.65rem;
+  padding-left: 1.15rem;
+  font-size: 0.8rem;
+}
+
+.lecture-prose li {
+  margin-bottom: 0.35rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.lecture-prose pre {
+  background: #060606 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 0.65rem 0.75rem !important;
+  margin-top: 0.65rem !important;
+  margin-bottom: 0.85rem !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  font-family: var(--mono) !important;
+  font-size: 10.5px !important;
+  line-height: 1.55 !important;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
+  max-width: 100%;
+}
+
+.lecture-prose code:not(pre code) {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #f59e0b;
+  padding: 1.5px 5px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  word-break: break-all;
+}
+
+.lecture-prose table {
+  width: 100%;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 0.65rem;
+  margin-bottom: 0.9rem;
+  border-collapse: collapse;
+  font-size: 10.5px;
+}
+
+.lecture-prose th {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 5px 8px;
+  text-align: right;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.lecture-prose td {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 5px 8px;
+  color: rgba(255, 255, 255, 0.8);
+  min-width: 80px;
+}
+
+.lecture-prose blockquote {
+  border-right: 3px solid #F59E0B;
+  background: rgba(245, 158, 11, 0.04);
+  padding: 7px 11px;
+  margin: 0.65rem 0;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.85);
+  direction: rtl;
+  font-size: 0.8rem;
+}
+
+.lecture-prose hr {
+  border-color: rgba(255, 255, 255, 0.06);
+  margin: 1rem 0;
+}
