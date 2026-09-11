@@ -38,43 +38,115 @@ export const LessonModal: React.FC<LessonModalProps> = ({ lessonId, phases: prop
   const lesson = mod?.lessons[lessonIdx];
 
   const [activeTab, setActiveTab] = useState<"ai-lecture" | "notes" | "feynman" | "quiz" | "mentor">("ai-lecture");
-  const [selectedLectureLayer, setSelectedLectureLayer] = useState<"all" | "intuition" | "mechanics" | "math" | "code" | "feynman">("all");
+  const [selectedLectureLayer, setSelectedLectureLayer] = useState<
+    "all" | "layer-1" | "layer-2" | "layer-3" | "layer-4" | "layer-5" | "layer-6" | "layer-7" | "layer-8"
+  >("all");
+  const [lectureFontSize, setLectureFontSize] = useState<"sm" | "base" | "lg">("base");
   const [isGeneratingLecture, setIsGeneratingLecture] = useState(false);
   const [copied, setCopied] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  const LECTURE_LAYERS = [
+    { id: "all", num: 0, title: "تمام ۸ لایه", en: "Full 8 Layers", icon: "📚", color: "#F59E0B", desc: "مطالعه پیوسته و ساختاریافته تمام ۸ لایه جزوه" },
+    { id: "layer-1", num: 1, title: "۱. تصویرسازی شهودی از صفر", en: "Intuitive Metaphor", icon: "🧩", color: "#10B981", desc: "تمثیل ملموس از دنیای واقعی بدون نیاز به هیچ پیش‌زمینه قبلی" },
+    { id: "layer-2", num: 2, title: "۲. بحران آغازین و چرایی", en: "The Missing Link", icon: "💥", color: "#F59E0B", desc: "نبود مفهوم، ریشه پیدایش و واژه‌نامه پایه با تعاریف ساده" },
+    { id: "layer-3", num: 3, title: "۳. شکست راه‌حل ساده‌لوحانه", en: "Naive vs Reality", icon: "⚠️", color: "#FB923C", desc: "توهم تسلط و چرا روش‌های سطحی و ساده‌لوحانه در عمل شکست می‌خورند" },
+    { id: "layer-4", num: 4, title: "۴. کالبدشکافی مکانیسم و دیاگرام", en: "Architecture & Flow", icon: "⚙️", color: "#3B82F6", desc: "دیاگرام اسکی، ساختار درونی و ۴ گام اجرای مکانیسم" },
+    { id: "layer-5", num: 5, title: "۵. تحلیل علمی و جدول مقایسه", en: "Scientific Bounds & Metrics", icon: "📐", color: "#8B5CF6", desc: "منحنی ابینگهاوس، فرمالیسم علمی و جدول مقایسه‌ای دقیق" },
+    { id: "layer-6", num: 6, title: "۶. پیاده‌سازی و پروتکل عملیاتی", en: "Mastery Protocol / Code", icon: "💡", color: "#06B6D4", desc: "پروتکل روزانه تثبیت یا کد استاندارد با کامنت‌های خط‌به‌خط" },
+    { id: "layer-7", num: 7, title: "۷. ۳ تله و اشتباه مرگبار", en: "Fatal Traps & Pitfalls", icon: "🚨", color: "#EF4444", desc: "۳ دام کشنده در یادگیری/پروداکشن، دلایل ریشه‌ای و راهکارهای قطعی" },
+    { id: "layer-8", num: 8, title: "۸. سنتز فاینمن و لایتنر", en: "Feynman & Flashcards", icon: "🧠", color: "#EC4899", desc: "خلاصه ۳ خطی ساده به علاوه ۳ پرسش کلیدی جعبه لایتنر SM-2" },
+  ];
+
+  // Markdown sanitizer & formatter to fix unescaped tables, single-line table rows, and Persian typography
+  const sanitizeAndFormatLectureMarkdown = (raw: string): string => {
+    if (!raw) return "";
+
+    let formatted = raw;
+
+    // 1. Fix single-line merged markdown tables (e.g. "| col1 | col2 | | :--- | :--- | | row1 | row2 |")
+    // Replace "| |" with "|\n|"
+    formatted = formatted.replace(/\|\s*\|\s*/g, "|\n|");
+
+    // Ensure table separator rows are properly isolated with newlines
+    formatted = formatted.replace(/(\|[^\n]+\|)\s*(\|(?:\s*:?---+:?\s*\|)+)/g, "$1\n$2");
+    formatted = formatted.replace(/(\|(?:\s*:?---+:?\s*\|)+)\s*(\|)/g, "$1\n$2");
+
+    // 2. Fix Persian typography & half-spaces for common cognitive & tech terms
+    formatted = formatted
+      .replace(/شکلپذیری/g, "شکل‌پذیری")
+      .replace(/کوتاهمدت/g, "کوتاه‌مدت")
+      .replace(/بلندمدت/g, "بلندمدت")
+      .replace(/طولانیمدت/g, "طولانی‌مدت")
+      .replace(/تختهسیاه/g, "تخته‌سیاه")
+      .replace(/تختهسیاهی/g, "تخته‌سیاهی")
+      .replace(/گامبهگام/g, "گام‌به‌گام")
+      .replace(/سادهلوحانه/g, "ساده‌لوحانه")
+      .replace(/دستورالعملها/g, "دستورالعمل‌ها")
+      .replace(/یافتهها/g, "یافته‌ها")
+      .replace(/یادداشتها/g, "یادداشت‌ها")
+      .replace(/جعبههای/g, "جعبه‌های")
+      .replace(/قفسههای/g, "قفسه‌های")
+      .replace(/کتابهای/g, "کتاب‌های")
+      .replace(/برگههای/g, "برگه‌های")
+      .replace(/تکههای/g, "تکه‌های")
+      .replace(/دادهها/g, "داده‌ها")
+      .replace(/نورونها/g, "نورون‌ها")
+      .replace(/سیناپسها/g, "سیناپس‌ها")
+      .replace(/پروتئینها/g, "پروتئین‌ها")
+      .replace(/سلولهای/g, "سلول‌های")
+      .replace(/ارتباطات/g, "ارتباطات")
+      .replace(/میکند/g, "می‌کند")
+      .replace(/میشود/g, "می‌شود")
+      .replace(/میافتد/g, "می‌افتد")
+      .replace(/میآیند/g, "می‌آیند")
+      .replace(/میبرد/g, "می‌برد")
+      .replace(/میبندد/g, "می‌بندد")
+      .replace(/میگذارد/g, "می‌گذارد")
+      .replace(/میریزند/g, "می‌ریزند")
+      .replace(/میگیرد/g, "می‌گیرد")
+      .replace(/نمیشود/g, "نمی‌شود")
+      .replace(/نمیکند/g, "نمی‌کند")
+      .replace(/میدهد/g, "می‌دهد")
+      .replace(/میزنند/g, "می‌زنند")
+      .replace(/میتوان/g, "می‌توان")
+      .replace(/میشناسد/g, "می‌شناسد")
+      .replace(/میخورند/g, "می‌خورند")
+      .replace(/میخورد/g, "می‌خورد");
+
+    return formatted;
+  };
+
   // Helper to extract specific cognitive sections for focused zero-to-hero mastery
-  const getFilteredLecture = (markdown: string, layer: "all" | "intuition" | "mechanics" | "math" | "code" | "feynman"): string => {
-    if (!markdown || layer === "all") return markdown;
-    const sections = markdown.split(/(?=^##\s+)/m);
+  const getFilteredLecture = (markdown: string, layerId: string): string => {
+    if (!markdown) return "";
+    const cleanMarkdown = sanitizeAndFormatLectureMarkdown(markdown);
+    if (layerId === "all") return cleanMarkdown;
+
+    const sections = cleanMarkdown.split(/(?=^##\s+)/m);
     const headerTitle = sections[0].startsWith("# ") ? sections[0] : "";
 
-    let matchedSections: string[] = [];
-    if (layer === "intuition") {
-      matchedSections = sections.filter((s) => 
-        s.includes("بخش ۱") || s.includes("بخش ۲") || s.includes("لایه ۰") || s.includes("بحران") || s.includes("شهود") || s.includes("تمثیل") || s.includes("واژه‌نامه")
-      );
-    } else if (layer === "mechanics") {
-      matchedSections = sections.filter((s) => 
-        s.includes("بخش ۳") || s.includes("بخش ۴") || s.includes("لایه ۱") || s.includes("ساده‌لوحانه") || s.includes("کالبدشکافی") || s.includes("دیاگرام") || s.includes("Under the Hood")
-      );
-    } else if (layer === "math") {
-      matchedSections = sections.filter((s) => 
-        s.includes("بخش ۵") || s.includes("لایه ۲") || s.includes("ریاضی") || s.includes("کران") || s.includes("Big-O") || s.includes("تاخیر")
-      );
-    } else if (layer === "code") {
-      matchedSections = sections.filter((s) => 
-        s.includes("بخش ۶") || s.includes("بخش ۷") || s.includes("لایه ۳") || s.includes("کد") || s.includes("تله") || s.includes("پروداکشن") || s.includes("Post-Mortem")
-      );
-    } else if (layer === "feynman") {
-      matchedSections = sections.filter((s) => 
-        s.includes("بخش ۸") || s.includes("فاینمن") || s.includes("Feynman") || s.includes("لنگر") || s.includes("SM-2")
-      );
+    let match: string | undefined;
+    if (layerId === "layer-1") {
+      match = sections.find((s) => s.includes("لایه ۱") || s.includes("لایه 1") || s.includes("بخش ۱") || s.includes("تصویرسازی") || s.includes("شهود") || s.includes("تمثیل") || s.includes("Metaphor"));
+    } else if (layerId === "layer-2") {
+      match = sections.find((s) => s.includes("لایه ۲") || s.includes("لایه 2") || s.includes("بخش ۲") || s.includes("بحران") || s.includes("چرایی") || s.includes("واژه‌نامه") || s.includes("Missing Link"));
+    } else if (layerId === "layer-3") {
+      match = sections.find((s) => s.includes("لایه ۳") || s.includes("لایه 3") || s.includes("بخش ۳") || s.includes("ساده‌لوحانه") || s.includes("تسلط") || s.includes("شکست") || s.includes("Naive"));
+    } else if (layerId === "layer-4") {
+      match = sections.find((s) => s.includes("لایه ۴") || s.includes("لایه 4") || s.includes("بخش ۴") || s.includes("کالبدشکافی") || s.includes("دیاگرام") || s.includes("Under the Hood") || s.includes("سخت‌افزار") || s.includes("مسیر حافظه"));
+    } else if (layerId === "layer-5") {
+      match = sections.find((s) => s.includes("لایه ۵") || s.includes("لایه 5") || s.includes("بخش ۵") || s.includes("تحلیل") || s.includes("علمی") || s.includes("ابینگهاوس") || s.includes("ریاضی") || s.includes("کران") || s.includes("تاخیر") || s.includes("Latency") || s.includes("Big-O") || s.includes("Retention"));
+    } else if (layerId === "layer-6") {
+      match = sections.find((s) => s.includes("لایه ۶") || s.includes("لایه 6") || s.includes("بخش ۶") || s.includes("پروتکل") || s.includes("پیاده‌سازی") || s.includes("کد استاندارد") || s.includes("کد مرجع") || s.includes("دستورالعمل") || s.includes("Protocol") || s.includes("Implementation"));
+    } else if (layerId === "layer-7") {
+      match = sections.find((s) => s.includes("لایه ۷") || s.includes("لایه 7") || s.includes("بخش ۷") || s.includes("تله") || s.includes("اشتباه") || s.includes("دام") || s.includes("Pitfalls") || s.includes("Traps"));
+    } else if (layerId === "layer-8") {
+      match = sections.find((s) => s.includes("لایه ۸") || s.includes("لایه 8") || s.includes("بخش ۸") || s.includes("فاینمن") || s.includes("Feynman") || s.includes("کارت حافظه") || s.includes("لایتنر") || s.includes("SM-2") || s.includes("سنتز"));
     }
 
-    if (matchedSections.length === 0) return markdown;
-    const combined = matchedSections.join("\n\n---\n\n");
-    return headerTitle && !combined.includes("# ") ? `${headerTitle}\n\n${combined}` : combined;
+    if (!match) return cleanMarkdown;
+    return headerTitle && !match.includes("# ") ? `${headerTitle}\n\n${match}` : match;
   };
 
   // Feynman helper state
@@ -231,7 +303,8 @@ export const LessonModal: React.FC<LessonModalProps> = ({ lessonId, phases: prop
 
   const handleCopyLecture = () => {
     if (cachedAiLecture) {
-      navigator.clipboard.writeText(cachedAiLecture);
+      const clean = sanitizeAndFormatLectureMarkdown(cachedAiLecture);
+      navigator.clipboard.writeText(clean);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -403,11 +476,43 @@ export const LessonModal: React.FC<LessonModalProps> = ({ lessonId, phases: prop
             <div className="space-y-3 w-full max-w-full">
               {/* Header & Generation Bar */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-[#080808] p-2.5 rounded-xl border border-white/[0.04]">
-                <div className="text-[10.5px] sm:text-[11px] text-white/70 font-fa flex items-center gap-1.5" dir="rtl">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] animate-pulse flex-shrink-0" />
-                  <span className="truncate">جزوه تحلیلی ۸ بخشی (Zero to Mastery)</span>
+                <div className="text-[10.5px] sm:text-[11px] text-white/80 font-fa flex items-center gap-1.5" dir="rtl">
+                  <span className="w-2 h-2 rounded-full bg-[#F59E0B] animate-pulse flex-shrink-0" />
+                  <span className="font-bold text-[#F59E0B]">جزوه ۸ لایه آموزشی:</span>
+                  <span className="text-white/60">از صفر مطلق تا پروداکشن</span>
                 </div>
-                <div className="flex items-center gap-1.5 justify-end flex-shrink-0">
+                <div className="flex items-center gap-1.5 justify-end flex-wrap">
+                  {/* Font Size Adjuster */}
+                  <div className="flex items-center bg-black/40 rounded-lg p-0.5 border border-white/[0.05]">
+                    <button
+                      onClick={() => setLectureFontSize("sm")}
+                      className={`px-1.5 py-0.5 text-[9px] font-mono rounded ${
+                        lectureFontSize === "sm" ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white/70"
+                      }`}
+                      title="فونت کوچک"
+                    >
+                      A-
+                    </button>
+                    <button
+                      onClick={() => setLectureFontSize("base")}
+                      className={`px-1.5 py-0.5 text-[9.5px] font-mono rounded ${
+                        lectureFontSize === "base" ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white/70"
+                      }`}
+                      title="فونت استاندارد"
+                    >
+                      A
+                    </button>
+                    <button
+                      onClick={() => setLectureFontSize("lg")}
+                      className={`px-1.5 py-0.5 text-[10px] font-mono rounded ${
+                        lectureFontSize === "lg" ? "bg-white/20 text-white font-bold" : "text-white/40 hover:text-white/70"
+                      }`}
+                      title="فونت بزرگ"
+                    >
+                      A+
+                    </button>
+                  </div>
+
                   {cachedAiLecture && (
                     <button
                       onClick={handleCopyLecture}
@@ -421,79 +526,143 @@ export const LessonModal: React.FC<LessonModalProps> = ({ lessonId, phases: prop
                     disabled={isGeneratingLecture}
                     className="px-3 py-1.5 rounded-lg bg-[#F59E0B] hover:bg-[#F59E0B]/90 active:bg-[#F59E0B]/80 text-black font-bold text-[10px] font-mono transition-colors disabled:opacity-40 cursor-pointer shadow-sm"
                   >
-                    {isGeneratingLecture ? "Synthesizing..." : cachedAiLecture ? "Regenerate" : "Generate Lecture 🚀"}
+                    {isGeneratingLecture ? "Synthesizing..." : cachedAiLecture ? "تولید مجدد 🔄" : "تولید جزوه ۸ لایه 🚀"}
                   </button>
                 </div>
               </div>
 
-              {/* 8-Section Cognitive Switcher (Zero to Production) */}
+              {/* 8-Layer Interactive Layer Navigation */}
               {cachedAiLecture && !isGeneratingLecture && (
-                <div className="space-y-1.5 w-full max-w-full">
+                <div className="space-y-2 w-full max-w-full">
+                  {/* Layer Selector Pills */}
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none snap-x w-full touch-pan-x">
-                    {[
-                      { id: "all", label: "📚 تمام ۸ بخش", en: "Full 8 Sections" },
-                      { id: "intuition", label: "🧩 ۱ و ۲: چرایی و تمثیل", en: "Why & Analogy" },
-                      { id: "mechanics", label: "⚙️ ۳ و ۴: کالبدشکافی و دیاگرام", en: "Mechanics" },
-                      { id: "math", label: "📐 ۵: تحلیل صوری و کران‌ها", en: "Math & Bounds" },
-                      { id: "code", label: "💻 ۶ و ۷: کد پروداکشن و تله‌ها", en: "Code & Pitfalls" },
-                      { id: "feynman", label: "🧠 ۸: سنتز فاینمن و SM-2", en: "Feynman Anchors" },
-                    ].map((layer) => {
+                    {LECTURE_LAYERS.map((layer) => {
                       const isSelected = selectedLectureLayer === layer.id;
                       return (
                         <button
                           key={layer.id}
                           onClick={() => setSelectedLectureLayer(layer.id as any)}
-                          className={`px-2.5 py-1.5 rounded-lg text-[9.5px] sm:text-[10px] font-fa whitespace-nowrap transition-all cursor-pointer border snap-start flex-shrink-0 ${
+                          className={`px-2.5 py-1.5 rounded-lg text-[10px] font-fa whitespace-nowrap transition-all cursor-pointer border snap-start flex-shrink-0 flex items-center gap-1.5 ${
                             isSelected
-                              ? "bg-[#F59E0B]/15 border-[#F59E0B]/50 text-[#F59E0B] font-bold shadow-sm"
-                              : "bg-[#080808] border-white/[0.04] text-white/40 hover:text-white/70 hover:border-white/[0.08]"
+                              ? "bg-[#F59E0B]/15 border-[#F59E0B]/60 text-[#F59E0B] font-bold shadow-sm"
+                              : "bg-[#080808] border-white/[0.04] text-white/50 hover:text-white/80 hover:border-white/[0.08]"
                           }`}
                         >
-                          {layer.label}
+                          <span>{layer.icon}</span>
+                          <span>{layer.title}</span>
                         </button>
                       );
                     })}
                   </div>
-                  
-                  {/* Layer Explanation Banner for Cognitive Ease */}
-                  <div className="text-[9.5px] sm:text-[10px] text-white/45 font-fa px-2.5 py-1.5 rounded-lg bg-[#080808] border border-white/[0.03] flex items-center justify-between gap-2" dir="rtl">
-                    <span className="truncate">
-                      {selectedLectureLayer === "all" && "📖 تمام ۸ بخش: از چرایی و تمثیل صفر تا کد بهینه پروداکشن"}
-                      {selectedLectureLayer === "intuition" && "🧩 بخش ۱ و ۲: بحران آغازین، واژه‌نامه پایه‌ای برای مبتدیان + تمثیل ملموس"}
-                      {selectedLectureLayer === "mechanics" && "⚙️ بخش ۳ و ۴: شکست راه‌حل ساده‌لوحانه + دیاگرام اسکی و مسیر داده در حافظه"}
-                      {selectedLectureLayer === "math" && "📐 بخش ۵: فرمالیسم ریاضی دانشگاهی + جدول کران‌ها و تاخیر به نانوثانیه"}
-                      {selectedLectureLayer === "code" && "💻 بخش ۶ و ۷: کد صنعتی با توضیحات خط‌به‌خط + ۳ تله مرگبار پروداکشن"}
-                      {selectedLectureLayer === "feynman" && "🧠 بخش ۸: سنتز ۳ خطی فاینمن + ۳ لنگر بازیابی فعال SM-2"}
-                    </span>
-                    <span className="font-mono text-[9px] text-[#F59E0B] font-bold flex-shrink-0">
-                      ~{Math.max(2, Math.round(cachedAiLecture.length / 500))} min
-                    </span>
-                  </div>
+
+                  {/* Active Layer Header & Stepper Navigator */}
+                  {selectedLectureLayer !== "all" ? (
+                    (() => {
+                      const currentIdx = LECTURE_LAYERS.findIndex((l) => l.id === selectedLectureLayer);
+                      const currentLayer = LECTURE_LAYERS[currentIdx];
+                      const prevLayer = currentIdx > 1 ? LECTURE_LAYERS[currentIdx - 1] : null;
+                      const nextLayer = currentIdx < LECTURE_LAYERS.length - 1 ? LECTURE_LAYERS[currentIdx + 1] : null;
+                      const progressPct = Math.round((currentIdx / (LECTURE_LAYERS.length - 1)) * 100);
+
+                      return (
+                        <div className="bg-[#080808] border border-white/[0.05] rounded-xl p-2.5 sm:p-3 space-y-2" dir="rtl">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">{currentLayer.icon}</span>
+                              <div>
+                                <div className="text-[11px] sm:text-xs font-bold text-white flex items-center gap-2">
+                                  <span>{currentLayer.title}</span>
+                                  <span className="text-[9px] font-mono font-normal text-white/40">({currentLayer.en})</span>
+                                </div>
+                                <div className="text-[9.5px] sm:text-[10px] text-white/50">{currentLayer.desc}</div>
+                              </div>
+                            </div>
+                            <div className="text-left flex-shrink-0 font-mono text-[9.5px] text-[#F59E0B] bg-[#F59E0B]/10 px-2 py-0.5 rounded border border-[#F59E0B]/20">
+                              لایه {currentLayer.num} از ۸ ({progressPct}%)
+                            </div>
+                          </div>
+
+                          {/* Progress Line */}
+                          <div className="w-full bg-white/[0.04] h-1 rounded-full overflow-hidden">
+                            <div
+                              className="bg-[#F59E0B] h-full transition-all duration-300 rounded-full"
+                              style={{ width: `${progressPct}%` }}
+                            />
+                          </div>
+
+                          {/* Prev / Next Stepper Controls */}
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/[0.03]">
+                            {prevLayer ? (
+                              <button
+                                onClick={() => setSelectedLectureLayer(prevLayer.id as any)}
+                                className="px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white text-[10px] font-fa flex items-center gap-1 transition-colors cursor-pointer"
+                              >
+                                <span>➔</span>
+                                <span>لایه قبلی: {prevLayer.title}</span>
+                              </button>
+                            ) : (
+                              <div />
+                            )}
+
+                            {nextLayer ? (
+                              <button
+                                onClick={() => setSelectedLectureLayer(nextLayer.id as any)}
+                                className="px-3 py-1 rounded-lg bg-[#F59E0B]/20 hover:bg-[#F59E0B]/30 border border-[#F59E0B]/40 text-[#F59E0B] font-bold text-[10px] font-fa flex items-center gap-1 transition-colors cursor-pointer"
+                              >
+                                <span>گام بعدی: {nextLayer.title}</span>
+                                <span>⬅</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setActiveTab("notes")}
+                                className="px-3 py-1 rounded-lg bg-[#10B981]/20 hover:bg-[#10B981]/30 border border-[#10B981]/40 text-[#10B981] font-bold text-[10px] font-fa flex items-center gap-1 transition-colors cursor-pointer"
+                              >
+                                <span>✓ پایان جزوه؛ رفتن به بخش یادداشت</span>
+                                <span>⬅</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="text-[9.5px] sm:text-[10px] text-white/50 font-fa px-2.5 py-1.5 rounded-lg bg-[#080808] border border-white/[0.03] flex items-center justify-between gap-2" dir="rtl">
+                      <span>📖 در حال مطالعه نمای پیوسته تمام ۸ لایه جزوه (از شهود تا پروداکشن)</span>
+                      <span className="font-mono text-[9px] text-[#F59E0B] font-bold flex-shrink-0">
+                        ~{Math.max(2, Math.round(cachedAiLecture.length / 500))} min
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
               {isGeneratingLecture ? (
                 <div className="py-12 text-center space-y-3 bg-[#080808] rounded-2xl border border-white/[0.05] p-5">
                   <div className="w-7 h-7 border-2 border-[#F59E0B] border-t-transparent rounded-full animate-spin mx-auto" />
-                  <div className="text-white/60 font-mono text-xs">Architecting 8-Section Masterclass Stack...</div>
+                  <div className="text-white/60 font-mono text-xs">Architecting 8-Layer Zero to Hero Stack...</div>
                   <div className="text-[10px] text-white/35 font-fa" dir="rtl">
-                    در حال تدوین چرایی بنیادین، واژه‌نامه صفر، دیاگرام سخت‌افزاری، ماتریس تاخیر نانوثانیه و کدهای صنعتی...
+                    در حال تدوین تمثیل صفر، بحران آغازین، دیاگرام کش سخت‌افزاری، جدول تاخیر نانوثانیه و کد استاندارد صنعتی...
                   </div>
                 </div>
               ) : cachedAiLecture ? (
-                <div className="lecture-prose text-white/85 text-xs leading-relaxed bg-[#080808] p-3 sm:p-4 rounded-2xl border border-white/[0.04] overflow-x-hidden shadow-inner w-full max-w-full">
+                <div
+                  className={`lecture-prose text-white/85 leading-relaxed bg-[#080808] p-3 sm:p-4 rounded-2xl border border-white/[0.04] overflow-x-hidden shadow-inner w-full max-w-full ${
+                    lectureFontSize === "sm" ? "text-[11.5px]" : lectureFontSize === "lg" ? "text-[14px]" : "text-[12.5px]"
+                  }`}
+                  dir="rtl"
+                >
                   <Markdown>{getFilteredLecture(cachedAiLecture, selectedLectureLayer)}</Markdown>
                 </div>
               ) : (
                 <div className="py-10 text-center space-y-3 bg-[#080808] rounded-2xl border border-dashed border-white/[0.07] p-5">
-                  <div className="text-xs text-white/50 font-fa" dir="rtl">
-                    هنوز جزوه تحلیلی ۸ بخشی (از صفر مطلق تا پروداکشن) برای این درس تدوین نشده است.
+                  <div className="text-xs text-white/60 font-fa" dir="rtl">
+                    هنوز جزوه تحلیلی ۸ لایه (از صفر مطلق تا پروداکشن) برای این درس تدوین نشده است.
                   </div>
                   <button
                     onClick={handleGenerateLecture}
                     className="px-4 py-2.5 rounded-xl bg-[#F59E0B] hover:bg-[#F59E0B]/90 active:bg-[#F59E0B]/80 text-black font-bold text-xs cursor-pointer shadow-md transition-transform active:scale-98"
                   >
-                    تدوین جزوه ۸ بخشی جامع (Zero to Production)
+                    تدوین جزوه ۸ لایه آموزشی (Zero to Production) 🚀
                   </button>
                 </div>
               )}
