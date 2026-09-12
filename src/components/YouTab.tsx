@@ -153,6 +153,25 @@ export const YouTab: React.FC<YouTabProps> = ({ onOpenCurriculumEditor }) => {
         </div>
       </div>
 
+      {/* PWA & Mobile App Experience */}
+      <div className="linear-card p-4 mb-3.5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-bold text-white flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00F5A0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+              <line x1="12" y1="18" x2="12.01" y2="18" />
+            </svg>
+            <span>Mobile App & PWA Status</span>
+          </div>
+          <span className="text-[10px] font-mono text-[#00F5A0] bg-[#00F5A0]/10 px-2 py-0.5 rounded-full border border-[#00F5A0]/20">
+            Standalone Ready
+          </span>
+        </div>
+        <div className="text-[11px] text-white/50 font-fa leading-normal" dir="rtl">
+          برنامه از قابلیت <strong className="text-white font-mono">PWA</strong> پشتیبانی می‌کند. در صورت افزودن به صفحه اصلی (Add to Home Screen)، دقیقاً مانند یک اپلیکیشن بومی بدون نوار آدرس و تمام‌صفحه باز خواهد شد.
+        </div>
+      </div>
+
       {/* Data Backup & Restore */}
       <div className="linear-card p-4 mb-3.5 space-y-3">
         <div className="text-xs font-bold text-white">Data Portability</div>

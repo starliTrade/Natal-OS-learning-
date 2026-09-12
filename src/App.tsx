@@ -8,6 +8,7 @@ import { StatsTab } from "./components/StatsTab";
 import { YouTab } from "./components/YouTab";
 import { CurriculumEditorModal } from "./components/CurriculumEditorModal";
 import { FloatingPomodoroBar } from "./components/FloatingPomodoroBar";
+import { PWAInstallBanner } from "./components/PWAInstallBanner";
 
 const MainContent: React.FC = () => {
   const { activeTab } = useNatal();
@@ -19,6 +20,11 @@ const MainContent: React.FC = () => {
       <div className="w-full max-w-[440px] min-h-screen bg-[#050505] flex flex-col relative border-x border-white/[0.04] sm:shadow-[0_0_60px_rgba(0,0,0,0.9)] pb-[72px]">
         {/* Safe-area top spacer */}
         <div className="h-[env(safe-area-inset-top,0px)] bg-[#050505] w-full" />
+
+        {/* PWA In-App Install Banner (Suppresses automatically when in standalone mode) */}
+        <div className="pt-2">
+          <PWAInstallBanner />
+        </div>
 
         {/* Dynamic Tab View */}
         <main className="flex-1 w-full">

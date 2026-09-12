@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090A0F" />
+      <stop offset="100%" stop-color="#141724" />
+    </linearGradient>
+    <linearGradient id="neonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F5A0" />
+      <stop offset="100%" stop-color="#00D9F5" />
+    </linearGradient>
+    <linearGradient id="amberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#FF5E62" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background rounded rectangle for maskable / standalone -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  
+  <!-- Subtle tech grid/rings -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="2" stroke-dasharray="6 6" />
+  <circle cx="256" cy="256" r="130" fill="none" stroke="rgba(0, 245, 160, 0.15)" stroke-width="2" />
+
+  <!-- Neural Core / Computing Node Symbol (N & Synapse Helix) -->
+  <g filter="url(#glow)">
+    <!-- Main Neon Path representing N and Synapse Connection -->
+    <path d="M160 360 V152 L352 360 V152" fill="none" stroke="url(#neonGrad)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <!-- Cognitive Core Node Accent -->
+    <circle cx="256" cy="256" r="22" fill="url(#amberGrad)" />
+    <circle cx="160" cy="152" r="14" fill="#00F5A0" />
+    <circle cx="352" cy="360" r="14" fill="#00D9F5" />
+    <circle cx="160" cy="360" r="10" fill="rgba(255, 255, 255, 0.6)" />
+    <circle cx="352" cy="152" r="10" fill="rgba(255, 255, 255, 0.6)" />
+  </g>
+</svg>
