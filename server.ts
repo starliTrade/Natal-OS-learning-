@@ -1435,7 +1435,8 @@ Return JSON:
 // 3. Review Engine: Active Recall Challenge & SM-2 Grading
 app.post("/api/review", async (req, res) => {
   try {
-    const { action, lessonTitle, lessonFa, phase, module, userNote, feynmanNote, question, userAnswer } = req.body;
+    const { action, lessonTitle, lessonFa, phase, module, userNote, feynmanNote, question, userAnswer, lectureText } = req.body;
+    const domain = detectTopicDomain(lessonTitle || "", lessonFa || "", module || "", phase || "");
 
     if (!process.env.GEMINI_API_KEY) {
       if (action === "question") {
@@ -1453,21 +1454,80 @@ app.post("/api/review", async (req, res) => {
         });
       }
       if (action === "quiz") {
-        return res.json({
-          questions: [
-            {
-              q: `هدف اصلی از پیاده‌سازی ${lessonTitle} چیست؟`,
-              options: [
-                "بهینه‌سازی مصرف حافظه و مدیریت منابع",
-                "افزایش پیچیدگی کامپایلر",
-                "صرفاً کاهش خطوط کد",
-                "غیرفعال‌سازی بررسی‌های زمان اجرا",
-              ],
-              correct: 0,
-              explanation: "هدف اصلی در سیستم‌ها، تخصیص بهینه منابع و حداقل‌سازی سربار است.",
-            },
-          ],
-        });
+        const fallbackQuiz =
+          domain === "cognitive-learning"
+            ? [
+                {
+                  q: `بر اساس مبانی این جزوه، تفاوت اصلی حافظه کاری (Working Memory) با حافظه بلندمدت چیست؟`,
+                  options: [
+                    "حافظه کاری ظرفیت محدودی (~۴ آیتم) دارد و تثبیت در بلندمدت نیازمند خواب عمیق و تکرار فاصله‌دار است.",
+                    "حافظه کاری نامحدود است و تمام جزییات را بدون نیاز به مرور حفظ می‌کند.",
+                    "حافظه بلندمدت نیازی به تغییر در سیناپس‌های عصبی ندارد.",
+                    "روخوانی مکرر برای انتقال به حافظه بلندمدت کافی است.",
+                  ],
+                  correct: 0,
+                  explanation: "ظرفیت شناختی کاری بسیار محدود است و تبدیل آن به حافظه پایدار مستلزم تحریک سیناپسی و استراحت است.",
+                },
+                {
+                  q: `چرا پدیده «توهم تسلط (Illusion of Competence)» با روخوانی ساده رخ می‌دهد؟`,
+                  options: [
+                    "چون مغز متن پیش‌رو را با توانایی بازیابی خود اشتباه می‌گیرد و احساس آشنایی کاذب می‌کند.",
+                    "چون روخوانی سیناپس‌ها را ضخیم‌تر از حل مسئله می‌کند.",
+                    "چون حافظه کوتاه‌مدت بلافاصله اطلاعات را دائمی می‌کند.",
+                    "چون هیچ نیازی به یادآوری فعال وجود ندارد.",
+                  ],
+                  correct: 0,
+                  explanation: "دیدن جواب و حس آشنایی مغز را فریب می‌دهد؛ تنها آزمون و بازیابی بدون نگاه کردن یادگیری واقعی را نشان می‌دهد.",
+                },
+                {
+                  q: `بر اساس اصل تکرار فاصله‌دار، بهترین زمان برای مرور یک مفهوم چه زمانی است؟`,
+                  options: [
+                    "درست پیش از آنکه خاطره عصبی رو به فراموشی کامل برود (در فواصل تصاعدی ۱، ۳، ۷ روز).",
+                    "ده‌ها بار پشت سر هم در یک ساعت اول.",
+                    "صرفاً یک ماه بعد از پایان کل دوره.",
+                    "هر روز و بدون افزایش فواصل زمانی.",
+                  ],
+                  correct: 0,
+                  explanation: "فشار بازیابی در آستانه فراموشی بیشترین استحکام را به اتصالات سیناپسی می‌بخشد.",
+                },
+              ]
+            : [
+                {
+                  q: `هدف محوری از بررسی ساختاری «${lessonFa || lessonTitle}» در معماری سیستم چیست؟`,
+                  options: [
+                    "بهینه‌سازی مصرف حافظه، کنترل تاخیر و پایداری عملکرد در بار کاری واقعی",
+                    "صرفاً کم کردن حجم فایل‌های اجرایی بدون توجه به سخت‌افزار",
+                    "حذف کامل پروتکل‌های حفاظتی و امنیتی سیستم",
+                    "افزایش عمدی تاخیر در پاسخگویی به درخواست‌ها",
+                  ],
+                  correct: 0,
+                  explanation: "مهندسی سیستم همواره در پی کاهش سربار، کنترل تاخیر و بهره‌وری حداکثری از منابع پردازشی است.",
+                },
+                {
+                  q: `در صورت نقض ناورداها و عدم تراز صحیح در این مفهوم، سیستم با چه خطری مواجه می‌شود؟`,
+                  options: [
+                    "افت شدید عملکرد (Bottleneck)، دسترسی نامعتبر به حافظه یا مسابقه منابع (Race Condition)",
+                    "هیچ تاثیری بر کارایی ندارد و کامپایلر همه چیز را خودکار رفع می‌کند",
+                    "کاهش مصرف برق بدون تغییر در سرعت",
+                    "تولید خودکار کدهای بهینه‌تر",
+                  ],
+                  correct: 0,
+                  explanation: "عدم رعایت محدودیت‌های سخت‌افزاری و همزمانی مستقیماً موجب سربار کش یا خطای منطقی می‌شود.",
+                },
+                {
+                  q: `شاخص استاندارد برای سنجش موفقیت پیاده‌سازی این مکانیزم چیست؟`,
+                  options: [
+                    "رسیدن به کران بهینه پیچیدگی زمانی/مکانی و حداقل‌سازی نوسان تاخیر (P99 Latency)",
+                    "فقط تعداد سطرهای کد منبع",
+                    "سرعت کامپایل کدهای پروژه",
+                    "زیبایی ظاهری رابط کاربری",
+                  ],
+                  correct: 0,
+                  explanation: "معیار واقعی در پروداکشن، پایداری تاخیر صدک بالا (P99) و مدیریت بهینه منابع است.",
+                },
+              ];
+
+        return res.json({ questions: fallbackQuiz });
       }
     }
 
@@ -1534,15 +1594,34 @@ Return JSON:
     }
 
     if (action === "quiz") {
-      const prompt = `Create a 3-question diagnostic conceptual multiple-choice quiz for the CS topic: "${lessonTitle}" (${lessonFa || ""}) in "${phase} > ${module}".
-Format JSON:
+      const prompt = `You are a cognitive mastery evaluator creating an aligned 3-question diagnostic quiz.
+Topic: "${lessonTitle}" (${lessonFa || ""})
+Curriculum context: "${phase} > ${module}"
+
+CRITICAL GROUNDING MANDATE:
+You MUST formulate exactly 3 multiple-choice diagnostic questions that are STRICTLY and EXCLUSIVELY derived from the provided lecture text below.
+DO NOT introduce external concepts, specialized taxonomies, or unmentioned sub-types (e.g. if specific cognitive load sub-types like intrinsic/extraneous are not explicitly detailed in the lecture text, DO NOT ask questions about them).
+Every question, option, correct answer, and explanation MUST be 100% answerable directly from the lecture text below.
+
+Provided Lecture Text:
+"""
+${lectureText ? lectureText.slice(0, 4500) : `Topic: ${lessonTitle} - ${lessonFa}. Key fundamental concepts of this lesson.`}
+"""
+
+Requirements:
+1. Exactly 3 conceptual multiple-choice questions in Persian (with English technical terms in backticks or parentheses).
+2. Exactly 4 clear options for each question (Options 0 to 3).
+3. "correct": integer index (0, 1, 2, or 3) of the correct option.
+4. "explanation": A clear, educational explanation in Persian why that option is correct and verifiable in the lecture text.
+
+Return JSON format:
 {
   "questions": [
     {
-      "q": "Question text in Persian with technical terms in English",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct": index (0, 1, 2, or 3),
-      "explanation": "Detailed explanation in Persian why this option is correct and others are flawed"
+      "q": "Question text in Persian strictly grounded in the lecture",
+      "options": ["Option A in Persian", "Option B in Persian", "Option C in Persian", "Option D in Persian"],
+      "correct": 0,
+      "explanation": "Persian explanation grounding why this is correct based on the lecture"
     }
   ]
 }`;

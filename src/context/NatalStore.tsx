@@ -16,6 +16,8 @@ import {
   getDueReviews,
   calculateBudget,
   getTodayDateString,
+  getCognitiveDateString,
+  getNextCutoffTimestamp,
   lessonIdToKey,
   projectIdToKey,
   parseLessonId,
@@ -303,15 +305,15 @@ export const NatalProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return state.dailyPlan[activeId] || null;
   }, [state.dailyPlan, todayKey]);
 
-  // Ensure daily plan logic
+  // Ensure daily plan logic with standard cognitive day cutoff (04:00 AM rollover)
   const ensurePlan = () => {
     const today = getTodayDateString();
     const currentActiveId = state.dailyPlan.__active;
 
-    // If an active plan exists and unlockAt has not passed, keep it
+    // If an active plan exists for today's cognitive date and unlockAt has not passed, keep it
     if (currentActiveId && state.dailyPlan[currentActiveId]) {
       const plan = state.dailyPlan[currentActiveId];
-      if (plan.unlockAt && Date.now() < plan.unlockAt) {
+      if (currentActiveId === today && plan.unlockAt && Date.now() < plan.unlockAt) {
         return;
       }
     }
@@ -329,13 +331,15 @@ export const NatalProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     }
 
+    const nextCutoff = getNextCutoffTimestamp();
+
     const newCycle: DailyCycle = {
       lessonIds: uncompletedLessons,
       budget: budgetInfo.budget,
       dueCountAtStart: dueReviews.length,
       reviewLoadAtStart: budgetInfo.reviewLoad,
       startedAt: Date.now(),
-      unlockAt: Date.now() + COGNITIVE_CONSTANTS.UNLOCK_MS,
+      unlockAt: nextCutoff,
     };
 
     setState((prev) => ({
@@ -348,10 +352,28 @@ export const NatalProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }));
   };
 
-  // Run ensurePlan on mount
+  // Run ensurePlan on mount and periodically check for 04:00 AM cognitive day boundary transitions
   useEffect(() => {
     ensurePlan();
-  }, [phases]);
+
+    const checkInterval = setInterval(() => {
+      const today = getTodayDateString();
+      const currentActiveId = state.dailyPlan.__active;
+      if (currentActiveId !== today) {
+        ensurePlan();
+      }
+    }, 15000);
+
+    const onFocus = () => {
+      ensurePlan();
+    };
+
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(checkInterval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [phases, state.dailyPlan.__active, state.checked.length, budgetInfo.budget]);
 
   // Comprehensive Pedagogical Gate & Progression Validator
   const getLessonGateStatus = (lessonId: string): LessonGateStatus => {
@@ -595,17 +617,42 @@ export const NatalProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const unlockPlanNow = () => {
     const today = getTodayDateString();
+    const checkedSet = new Set(state.checked);
+    const orderedItems = getCurriculumOrderedItems(phases);
+
     setState((prev) => {
-      const current = prev.dailyPlan[today] || prev.dailyPlan[prev.dailyPlan.__active || ""];
-      if (!current) return prev;
+      const activeKey = prev.dailyPlan.__active || today;
+      const current = prev.dailyPlan[activeKey] || {
+        lessonIds: [],
+        budget: 2,
+        dueCountAtStart: 0,
+        reviewLoadAtStart: 0,
+        startedAt: Date.now(),
+        unlockAt: Date.now(),
+      };
+
+      const currentList = current.lessonIds || [];
+      const currentListSet = new Set(currentList);
+      const additionalLessons: string[] = [];
+
+      for (const item of orderedItems) {
+        if (!checkedSet.has(item.id) && !currentListSet.has(item.id)) {
+          additionalLessons.push(item.id);
+          if (additionalLessons.length >= 2) break;
+        }
+      }
+
       return {
         ...prev,
         dailyPlan: {
           ...prev.dailyPlan,
-          [prev.dailyPlan.__active || today]: {
+          [activeKey]: {
             ...current,
+            lessonIds: [...currentList, ...additionalLessons],
+            budget: currentList.length + additionalLessons.length,
             unlockAt: Date.now() - 1000,
           },
+          __active: activeKey,
         },
       };
     });

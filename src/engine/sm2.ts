@@ -9,24 +9,43 @@ export const COGNITIVE_CONSTANTS = Object.freeze({
   LOW_PACE_THRESHOLD: 2.0,
   STARTER_CEILING: 2,
   SUSTAINED_CEILING: 3,
-  UNLOCK_MS: 86_400_000, // 24 hours
+  CUTOFF_HOUR: 4, // 04:00 AM standard cognitive day rollover (Anki/SuperMemo standard)
+  UNLOCK_MS: 86_400_000, // 24 hours fallback
   SM2_INITIAL_EF: 2.5,
   SM2_MIN_EF: 1.3,
   FIRST_INTERVAL: 1,
   SECOND_INTERVAL: 6,
 });
 
-const tehranFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Tehran",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
+/**
+ * Returns the cognitive study date string (YYYY-MM-DD).
+ * Days roll over at `cutoffHour` (default 04:00 AM) so late-night study
+ * is counted toward the current cognitive day, and the new day unlocks in the morning.
+ */
+export function getCognitiveDateString(d: Date = new Date(), cutoffHour: number = COGNITIVE_CONSTANTS.CUTOFF_HOUR): string {
+  const adjusted = new Date(d.getTime() - cutoffHour * 3_600_000);
+  const year = adjusted.getFullYear();
+  const month = String(adjusted.getMonth() + 1).padStart(2, "0");
+  const day = String(adjusted.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export function getTodayDateString(d: Date = new Date()): string {
-  const parts = tehranFormatter.formatToParts(d);
-  const getVal = (t: string) => parts.find((p) => p.type === t)?.value || "00";
-  return `${getVal("year")}-${getVal("month")}-${getVal("day")}`;
+  return getCognitiveDateString(d);
+}
+
+/**
+ * Returns the exact timestamp (ms) of the next upcoming 04:00 AM cognitive rollover.
+ */
+export function getNextCutoffTimestamp(now: Date = new Date(), cutoffHour: number = COGNITIVE_CONSTANTS.CUTOFF_HOUR): number {
+  const cutoffToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), cutoffHour, 0, 0, 0);
+  if (now.getTime() < cutoffToday.getTime()) {
+    // Current time is before 4 AM today (e.g. 02:00 AM), so next cutoff is today at 4:00 AM
+    return cutoffToday.getTime();
+  }
+  // Current time is after 4 AM (e.g. 14:00), so next cutoff is tomorrow at 4:00 AM
+  const cutoffTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, cutoffHour, 0, 0, 0);
+  return cutoffTomorrow.getTime();
 }
 
 export function addDaysToDate(dateStr: string, days: number): string {
@@ -35,7 +54,7 @@ export function addDaysToDate(dateStr: string, days: number): string {
   if (Number.isFinite(utc)) {
     return new Date(utc + 86_400_000 * days).toISOString().slice(0, 10);
   }
-  return getTodayDateString();
+  return getCognitiveDateString();
 }
 
 export function lessonIdToKey(phaseId: number | string, modId: string, lessonIdx: number): string {
@@ -259,12 +278,18 @@ export function executeSM2(currentCard: SM2CardData, grade: number): SM2CardData
   // If grade is 5 on a previous leech, mark leech as resolved
   const isLeech = currentCard.isLeech && grade < 5;
 
+  // Calculate exact morning cutoff timestamp for target cognitive date
+  const currentCogDate = getCognitiveDateString(new Date(now));
+  const targetCogDate = addDaysToDate(currentCogDate, nextInterval);
+  const [tY, tM, tD] = targetCogDate.split("-").map(Number);
+  const targetDueAt = new Date(tY, tM - 1, tD, COGNITIVE_CONSTANTS.CUTOFF_HOUR, 0, 0, 0).getTime();
+
   return {
     ...currentCard,
     reps: nextReps,
     interval: nextInterval,
     ef: nextEF,
-    dueAt: now + nextInterval * 86_400_000,
+    dueAt: targetDueAt,
     relearn: false,
     isLeech,
     last: now,

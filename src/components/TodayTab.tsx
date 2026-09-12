@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNatal } from "../context/NatalStore";
-import { parseLessonId } from "../engine/sm2";
+import { parseLessonId, getNextCutoffTimestamp } from "../engine/sm2";
 import { LessonModal } from "./LessonModal";
 
 export const TodayTab: React.FC = () => {
@@ -30,6 +30,32 @@ export const TodayTab: React.FC = () => {
 
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
 
+  // Live countdown to next Cognitive Rollover (Next day morning cutoff)
+  const [unlockCountdown, setUnlockCountdown] = useState<{ hours: number; minutes: number; seconds: number }>({
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = Date.now();
+      const targetTime = activePlan?.unlockAt && activePlan.unlockAt > now
+        ? activePlan.unlockAt
+        : getNextCutoffTimestamp(new Date(now));
+      
+      const diff = Math.max(0, targetTime - now);
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      setUnlockCountdown({ hours, minutes, seconds });
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [activePlan?.unlockAt]);
+
   // Formatted dates
   const todayDateEn = new Date().toLocaleDateString("en-US", {
     weekday: "short",
@@ -54,7 +80,7 @@ export const TodayTab: React.FC = () => {
   const planLessonIds = activePlan?.lessonIds || [];
   const planCompleted = planLessonIds.filter((id) => checked.includes(id)).length;
   const planTotal = planLessonIds.length;
-  const isPlanAllDone = planTotal > 0 && planCompleted === planTotal;
+  const isPlanAllDone = planTotal > 0 && planCompleted >= planTotal;
 
   // Total course progress
   const totalLessonsCount = phases.reduce(
@@ -82,9 +108,9 @@ export const TodayTab: React.FC = () => {
       <header className="mb-4">
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
+            <span className={`w-1.5 h-1.5 rounded-full ${isPlanAllDone ? "bg-[#10B981]" : "bg-[#F59E0B]"}`} />
             <span className="text-[10px] font-mono text-white/60">
-              Natal Engine
+              Natal OS • {isPlanAllDone ? "Consolidation Active" : "Cognitive Budget"}
             </span>
           </div>
 
@@ -104,8 +130,12 @@ export const TodayTab: React.FC = () => {
           </div>
 
           <div className="text-right">
-            <span className="inline-block px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[11px] font-mono text-white/70">
-              {planCompleted}/{planTotal} تکمیل‌شده
+            <span className={`inline-block px-2.5 py-1 rounded-lg border text-[11px] font-mono ${
+              isPlanAllDone 
+                ? "bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30 font-bold"
+                : "bg-white/[0.04] border-white/[0.06] text-white/70"
+            }`}>
+              {planCompleted}/{planTotal} {isPlanAllDone ? "تکمیل شد ✓" : "تکمیل‌شده"}
             </span>
           </div>
         </div>
@@ -132,14 +162,14 @@ export const TodayTab: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-[11px] text-white/50 font-fa mt-0.5">
-                  مرور کارت‌های تکرار فاصله‌دار برای تثبیت حافظه الزامی است.
+                  مرور کارت‌های تکرار فاصله‌دار برای باز شدن گیت دروس جدید الزامی است.
                 </div>
               </div>
             </div>
 
             <button
               onClick={() => setActiveTab("review")}
-              className="bg-rose-500 hover:bg-rose-400 text-black font-bold font-fa text-[11px] px-3 py-1.5 rounded-lg cursor-pointer transition-all flex-shrink-0"
+              className="bg-rose-500 hover:bg-rose-400 text-black font-bold font-fa text-[11px] px-3 py-1.5 rounded-lg cursor-pointer transition-all flex-shrink-0 shadow-sm shadow-rose-500/20"
             >
               مرور سریع
             </button>
@@ -147,8 +177,71 @@ export const TodayTab: React.FC = () => {
         </div>
       )}
 
-      {/* 3. Hero Feature Spotlight */}
-      {heroLessonDetails && (
+      {/* 3. Hero Feature Spotlight: Normal vs Daily Budget Completed Lock State */}
+      {isPlanAllDone ? (
+        <div className="linear-card p-4 mb-4 relative overflow-hidden bg-gradient-to-b from-[#10B981]/10 via-[#080808] to-[#080808] border border-[#10B981]/30 rounded-2xl">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#10B981]/15 border border-[#10B981]/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                <span className="text-[10px] font-mono font-bold text-[#10B981]">
+                  DAILY CONSOLIDATION LOCK
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-white/50 bg-white/[0.04] px-2 py-0.5 rounded border border-white/[0.08]">
+                {planCompleted}/{planTotal} Lessons Done
+              </span>
+            </div>
+
+            <div className="text-right" dir="rtl">
+              <h2 className="text-[16px] font-extrabold text-white font-fa leading-snug flex items-center gap-1.5">
+                <span>سقف یادگیری امروز تکمیل شد</span>
+                <span className="text-base">🌙</span>
+              </h2>
+              <p className="text-[11.5px] text-white/65 font-fa mt-1.5 leading-relaxed">
+                تبریک! مغز شما حداکثر بودجه شناختی امروز را دریافت کرد. طبق علوم اعصاب، برای تثبیت سیناپسی (LTP) و ماندگاری در حافظه بلندمدت، نیاز به استراحت و چرخه خواب شبانه دارید.
+              </p>
+            </div>
+
+            {/* Live Unlock Countdown Timer */}
+            <div className="bg-[#050505] p-3 rounded-xl border border-white/[0.06] flex items-center justify-between gap-3">
+              <div className="text-right" dir="rtl">
+                <div className="text-[10.5px] font-bold text-white/60 font-fa">
+                  زمان تا بازگشایی سقف روز بعد:
+                </div>
+                <div className="text-[9.5px] text-white/35 font-fa mt-0.5">
+                  مرز شناختی روز جدید (۰۴:۰۰ صبح)
+                </div>
+              </div>
+              <div className="flex items-center gap-1 font-mono text-base font-extrabold text-[#10B981] bg-[#10B981]/10 px-3 py-1.5 rounded-lg border border-[#10B981]/20">
+                <span>{String(unlockCountdown.hours).padStart(2, "0")}</span>
+                <span className="text-white/30">:</span>
+                <span>{String(unlockCountdown.minutes).padStart(2, "0")}</span>
+                <span className="text-white/30">:</span>
+                <span className="text-xs text-white/70">{String(unlockCountdown.seconds).padStart(2, "0")}</span>
+              </div>
+            </div>
+
+            {/* Post-Completion Actions */}
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/[0.06]">
+              <button
+                onClick={() => setActiveTab("review")}
+                className="flex-1 py-2 px-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white font-fa text-xs font-bold transition-all cursor-pointer border border-white/[0.08] text-center"
+              >
+                🧠 جعبه مرور SM-2
+              </button>
+
+              <button
+                onClick={unlockPlanNow}
+                title="افزودن درس‌های بیشتر در حالت اضطراری"
+                className="py-2 px-3 rounded-xl bg-[#F59E0B]/15 hover:bg-[#F59E0B]/25 text-[#F59E0B] font-fa text-xs font-bold transition-all cursor-pointer border border-[#F59E0B]/30 text-center"
+              >
+                ⚡ بازگشایی اضطراری
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : heroLessonDetails ? (
         <div className="linear-card p-4 mb-4 relative overflow-hidden group">
           <div className="relative z-10">
             <div className="flex items-center justify-between gap-2 mb-2">
@@ -204,7 +297,7 @@ export const TodayTab: React.FC = () => {
 
               <button
                 onClick={() => setSelectedLessonId(nextTargetLessonId)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-black font-extrabold text-[11px] font-fa cursor-pointer transition-all"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-black font-extrabold text-[11px] font-fa cursor-pointer transition-all shadow-md shadow-[#F59E0B]/10"
               >
                 <span>شروع مطالعه</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -214,7 +307,7 @@ export const TodayTab: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* 4. Bento Grid */}
       <div className="grid grid-cols-2 gap-2.5 mb-4">
@@ -244,109 +337,57 @@ export const TodayTab: React.FC = () => {
 
           <div className="my-1">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-[24px] font-extrabold font-mono text-[#F59E0B] tracking-tight leading-none">
-                {budgetInfo.budget}
+              <span className={`text-[24px] font-extrabold font-mono tracking-tight leading-none ${
+                isPlanAllDone ? "text-[#10B981]" : "text-[#F59E0B]"
+              }`}>
+                {isPlanAllDone ? "۰" : budgetInfo.budget}
               </span>
-              <span className="text-[11px] font-fa text-white/40">درس باقی‌مانده</span>
-            </div>
-
-            <div className="w-full bg-white/[0.04] h-1.5 rounded-full overflow-hidden mt-2">
-              <div
-                className="h-full bg-[#F59E0B] rounded-full transition-all duration-500"
-                style={{
-                  width: `${Math.min(100, Math.max(10, ((budgetInfo.personalCeiling - budgetInfo.budget) / budgetInfo.personalCeiling) * 100))}%`,
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="text-[9.5px] text-white/30 font-fa mt-1 text-right" dir="rtl">
-            سقف: {budgetInfo.personalCeiling} درس در روز
-          </div>
-        </div>
-
-        {/* Bento 2: Progress */}
-        <div className="linear-card p-3 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-fa font-bold text-white/40">
-              پیشرفت کل
-            </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
-          </div>
-
-          <div className="my-1">
-            <div className="flex items-baseline gap-1">
-              <span className="text-[24px] font-extrabold font-mono text-white tracking-tight leading-none">
-                {totalProgressPercent}
+              <span className="text-[11px] font-fa text-white/40">
+                {isPlanAllDone ? "تکمیل سقف امروز" : "درس باقی‌مانده"}
               </span>
-              <span className="text-xs text-white/40 font-mono">%</span>
             </div>
-
-            <div className="w-full bg-white/[0.04] h-1.5 rounded-full overflow-hidden mt-2">
-              <div
-                className="h-full bg-[#10B981] rounded-full transition-all duration-500"
-                style={{ width: `${totalProgressPercent}%` }}
-              />
+            <div className="text-[9.5px] font-fa text-white/30 mt-0.5" dir="rtl">
+              سقف شخصی: {budgetInfo.personalCeiling} درس در روز
             </div>
           </div>
 
-          <div className="text-[9.5px] text-white/30 font-mono mt-1 flex justify-between items-center">
-            <span className="font-fa text-white/40">تکمیل</span>
-            <span>{totalCheckedCount} / {totalLessonsCount}</span>
+          <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden mt-1">
+            <div
+              className={`h-full transition-all duration-300 ${isPlanAllDone ? "bg-[#10B981]" : "bg-[#F59E0B]"}`}
+              style={{
+                width: `${Math.min(100, Math.round((planCompleted / Math.max(1, planTotal)) * 100))}%`,
+              }}
+            />
           </div>
         </div>
 
-        {/* Bento 3: Spaced Repetition Gate */}
-        <div
-          onClick={() => setActiveTab("review")}
-          className="linear-card p-3 flex flex-col justify-between cursor-pointer group hover:border-white/20 transition-all"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-fa font-bold text-white/40">
-              مرور هوشمند SM-2
-            </span>
-            <span className="text-[10px] text-white/40 group-hover:text-white transition-colors">↗</span>
-          </div>
-
-          <div className="flex items-center gap-2 my-1">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-              dueReviews.length > 0 ? "bg-rose-500/10 text-rose-400 border border-rose-500/30" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-            }`}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-[13px] font-extrabold font-fa text-white leading-tight">
-                {dueReviews.length > 0 ? `${dueReviews.length} کارت آماده` : "به‌روز"}
-              </div>
-              <div className="text-[9px] text-white/40 font-fa mt-0.5">
-                {dueReviews.length > 0 ? "نیازمند مرور" : "حافظه پایدار"}
-              </div>
-            </div>
-          </div>
-
-          <div className="text-[9.5px] font-fa text-[#F59E0B] group-hover:underline text-right mt-1" dir="rtl">
-            ورود به مرور ←
-          </div>
-        </div>
-
-        {/* Bento 4: Pomodoro Focus Timer */}
+        {/* Bento 2: Pomodoro Focus Engine */}
         <div className="linear-card p-3 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-fa font-bold text-white/40">
               تمرکز عمیق
             </span>
-            <button
-              onClick={() => setPomodoroMode(isWork ? "break" : "work")}
-              className="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-white/50"
-            >
-              {isWork ? "Focus" : "Break"}
-            </button>
+            <div className="flex items-center gap-0.5 bg-[#050505] p-0.5 rounded border border-white/[0.06]">
+              <button
+                onClick={() => setPomodoroMode("work")}
+                className={`px-1.5 py-0.5 text-[8.5px] font-fa rounded transition-all cursor-pointer ${
+                  isWork ? "bg-[#F59E0B] text-black font-bold" : "text-white/40 hover:text-white"
+                }`}
+              >
+                ۲۵دقیقه
+              </button>
+              <button
+                onClick={() => setPomodoroMode("break")}
+                className={`px-1.5 py-0.5 text-[8.5px] font-fa rounded transition-all cursor-pointer ${
+                  !isWork ? "bg-[#10B981] text-black font-bold" : "text-white/40 hover:text-white"
+                }`}
+              >
+                ۵دقیقه
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between gap-2 my-1">
+          <div className="flex items-center justify-between my-0.5">
             <div className="relative flex-shrink-0">
               <svg width="32" height="32" className="-rotate-90">
                 <circle cx="16" cy="16" r="12" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2" />
@@ -407,19 +448,23 @@ export const TodayTab: React.FC = () => {
       <section className="linear-card overflow-hidden mb-5">
         <div className="p-3 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.01]">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
+            <span className={`w-2 h-2 rounded-full ${isPlanAllDone ? "bg-[#10B981]" : "bg-[#F59E0B]"}`} />
             <span className="text-[12px] font-bold text-white font-fa" dir="rtl">
-              فهرست دروس امروز
+              {isPlanAllDone ? "فهرست دروس تکمیل‌شده امروز" : "فهرست دروس امروز"}
             </span>
           </div>
 
-          {isPlanAllDone && (
+          {isPlanAllDone ? (
             <button
               onClick={unlockPlanNow}
-              className="text-[10px] font-bold text-black bg-[#F59E0B] hover:bg-[#F59E0B]/90 px-2.5 py-0.5 rounded-full transition-all flex items-center gap-1 font-fa cursor-pointer"
+              className="text-[10px] font-bold text-[#F59E0B] bg-[#F59E0B]/10 hover:bg-[#F59E0B]/20 border border-[#F59E0B]/30 px-2.5 py-0.5 rounded-full transition-all flex items-center gap-1 font-fa cursor-pointer"
             >
-              <span>+ درس‌های بیشتر</span>
+              <span>+ بازگشایی اضطراری</span>
             </button>
+          ) : (
+            <span className="text-[10.5px] font-mono text-white/40">
+              {planCompleted} of {planTotal}
+            </span>
           )}
         </div>
 
@@ -462,7 +507,7 @@ export const TodayTab: React.FC = () => {
                     }
                     className={`w-5 h-5 rounded-md flex-shrink-0 mt-0.5 flex items-center justify-center cursor-pointer transition-all ${
                       isDone
-                        ? "bg-[#F59E0B] border-2 border-[#F59E0B]"
+                        ? "bg-[#10B981] border-2 border-[#10B981]"
                         : gateStatus.canComplete
                         ? "border-[1.5px] border-[#F59E0B] bg-[#F59E0B]/10 hover:bg-[#F59E0B]/20"
                         : !gateStatus.isUnlocked
@@ -489,7 +534,7 @@ export const TodayTab: React.FC = () => {
                   >
                     <div
                       className={`text-[13px] font-bold font-fa leading-snug mb-0.5 ${
-                        isDone ? "text-white/30 line-through" : "text-white hover:text-[#F59E0B] transition-colors"
+                        isDone ? "text-white/40 line-through" : "text-white hover:text-[#F59E0B] transition-colors"
                       }`}
                     >
                       {details.fa}

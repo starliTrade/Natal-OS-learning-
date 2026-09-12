@@ -187,7 +187,34 @@ export const LessonModal: React.FC<LessonModalProps> = ({
   // Quiz state
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
+  const existingQuizResult = quizResults?.[lessonId];
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>(() => {
+    if (existingQuizResult?.answers && Array.isArray(existingQuizResult.answers)) {
+      const initial: Record<number, number> = {};
+      existingQuizResult.answers.forEach((ans, idx) => {
+        if (ans >= 0) initial[idx] = ans;
+      });
+      return initial;
+    }
+    return {};
+  });
+  const [isQuizSubmitted, setIsQuizSubmitted] = useState<boolean>(() => Boolean(existingQuizResult?.passed || existingQuizResult?.takenAt));
+
+  // Sync quiz state if lesson changes
+  React.useEffect(() => {
+    const res = quizResults?.[lessonId];
+    if (res?.answers && Array.isArray(res.answers)) {
+      const initial: Record<number, number> = {};
+      res.answers.forEach((ans, idx) => {
+        if (ans >= 0) initial[idx] = ans;
+      });
+      setSelectedAnswers(initial);
+      setIsQuizSubmitted(true);
+    } else {
+      setSelectedAnswers({});
+      setIsQuizSubmitted(false);
+    }
+  }, [lessonId]);
 
   // AI Mentor & Architecture Chat state
   const [tutorQuestion, setTutorQuestion] = useState("");
@@ -260,6 +287,8 @@ export const LessonModal: React.FC<LessonModalProps> = ({
     if (!lesson) return;
     setIsLoadingQuiz(true);
     setSelectedAnswers({});
+    setIsQuizSubmitted(false);
+    setValidationError(null);
     try {
       const res = await fetch("/api/review", {
         method: "POST",
@@ -270,6 +299,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({
           lessonFa: lesson.fa,
           phase: phase?.title,
           module: mod?.title,
+          lectureText: cachedAiLecture || (lesson.keyConcepts ? `${lesson.fa} (${lesson.en}). مفاهیم کلیدی: ${lesson.keyConcepts.join(", ")}` : ""),
         }),
       });
       const data = await res.json();
@@ -310,17 +340,32 @@ export const LessonModal: React.FC<LessonModalProps> = ({
   };
 
   const handleSelectQuizOption = (qIdx: number, optIdx: number) => {
-    const nextAnswers = { ...selectedAnswers, [qIdx]: optIdx };
-    setSelectedAnswers(nextAnswers);
+    if (isQuizSubmitted) return;
+    setSelectedAnswers((prev) => ({ ...prev, [qIdx]: optIdx }));
+  };
 
-    // If all questions answered, auto-compute and persist quiz score
-    if (quizQuestions.length > 0 && Object.keys(nextAnswers).length === quizQuestions.length) {
-      const score = quizQuestions.reduce((acc, q, idx) => {
-        return acc + (nextAnswers[idx] === q.correct ? 1 : 0);
-      }, 0);
-      const answersArray = quizQuestions.map((_, idx) => nextAnswers[idx] ?? -1);
-      saveQuizResult(lessonId, score, quizQuestions.length, answersArray);
+  const handleSubmitQuiz = () => {
+    if (quizQuestions.length === 0) return;
+    const answeredCount = Object.keys(selectedAnswers).length;
+    if (answeredCount < quizQuestions.length) {
+      setValidationError("لطفاً پیش از ثبت و ممیزی، به تمام ۳ سوال آزمون پاسخ دهید.");
+      return;
     }
+    setValidationError(null);
+
+    const score = quizQuestions.reduce((acc, q, idx) => {
+      return acc + (selectedAnswers[idx] === q.correct ? 1 : 0);
+    }, 0);
+    const answersArray = quizQuestions.map((_, idx) => selectedAnswers[idx] ?? -1);
+
+    saveQuizResult(lessonId, score, quizQuestions.length, answersArray);
+    setIsQuizSubmitted(true);
+  };
+
+  const handleRetakeQuiz = () => {
+    setSelectedAnswers({});
+    setIsQuizSubmitted(false);
+    setValidationError(null);
   };
 
   const handleCopyLecture = () => {
@@ -933,91 +978,233 @@ export const LessonModal: React.FC<LessonModalProps> = ({
 
           {/* TAB 4: QUIZ */}
           {activeTab === "quiz" && (
-            <div className="space-y-3">
-              <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 bg-[#080808] p-2.5 rounded-xl border border-white/[0.04]">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10.5px] sm:text-[11px] text-white/60 font-mono">Diagnostic Check (min 2/3):</span>
-                  {quizResults?.[lessonId] && (
+            <div className="space-y-3.5">
+              {/* Quiz Header Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-[#080808] p-3 rounded-xl border border-white/[0.05]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-white/70 font-fa" dir="rtl">
+                    آزمون تشخیصی ۳ سوالی (شرط قبولی: حداقل ۲ از ۳):
+                  </span>
+                  {existingQuizResult && (
                     <span
-                      className={`text-[9.5px] sm:text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
-                        quizResults[lessonId].passed
-                           ? "bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30"
+                      className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1.5 ${
+                        existingQuizResult.passed
+                          ? "bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30"
                           : "bg-[#EF4444]/15 text-[#EF4444] border border-[#EF4444]/30"
                       }`}
                     >
-                      {quizResults[lessonId].passed ? "PASSED" : "RETRY"}: {quizResults[lessonId].score}/{quizResults[lessonId].total}
+                      {existingQuizResult.passed ? "✓ قبول شده" : "✗ نیاز به تکرار"}: {existingQuizResult.score}/{existingQuizResult.total}
                     </span>
                   )}
                 </div>
-                <button
-                  onClick={handleFetchQuiz}
-                  disabled={isLoadingQuiz}
-                  className="text-[10px] font-mono px-2.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-white/80 transition-colors cursor-pointer border border-white/[0.04] self-end xs:self-auto"
-                >
-                  {isLoadingQuiz ? "Formulating..." : quizQuestions.length > 0 ? "Regenerate" : "Load 3 Questions 🚀"}
-                </button>
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  {quizQuestions.length > 0 && isQuizSubmitted && (
+                    <button
+                      onClick={handleRetakeQuiz}
+                      className="text-[10.5px] font-fa px-2.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white/80 transition-colors cursor-pointer border border-white/[0.06]"
+                    >
+                      🔄 پاسخ‌دهی مجدد
+                    </button>
+                  )}
+                  <button
+                    onClick={handleFetchQuiz}
+                    disabled={isLoadingQuiz}
+                    className="text-[10.5px] font-fa px-3 py-1.5 rounded-lg bg-[#06B6D4]/10 hover:bg-[#06B6D4]/20 text-[#06B6D4] transition-colors cursor-pointer border border-[#06B6D4]/25 disabled:opacity-40"
+                  >
+                    {isLoadingQuiz ? "در حال استخراج سوالات..." : quizQuestions.length > 0 ? "⚡ سوالات جدید از جزوه" : "بارگذاری آزمون تشخیصی 🚀"}
+                  </button>
+                </div>
               </div>
 
               {isLoadingQuiz ? (
-                <div className="py-8 text-center text-white/40 font-mono text-xs">Formulating diagnostic questions with AI...</div>
+                <div className="py-12 text-center space-y-3 bg-[#080808] rounded-xl border border-white/[0.04]">
+                  <div className="inline-block w-6 h-6 border-2 border-[#06B6D4] border-t-transparent rounded-full animate-spin"></div>
+                  <div className="text-white/60 font-fa text-xs" dir="rtl">
+                    در حال تحلیل عمیق متن جزوه و استخراج ۳ سوال تشخیصی دقیق...
+                  </div>
+                </div>
               ) : quizQuestions.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {quizQuestions.map((q, qIdx) => {
-                    const isAnswered = selectedAnswers[qIdx] !== undefined;
-                    const selected = selectedAnswers[qIdx];
+                    const isSelected = selectedAnswers[qIdx] !== undefined;
+                    const selectedOptIdx = selectedAnswers[qIdx];
+                    const isCorrect = isQuizSubmitted && selectedOptIdx === q.correct;
+                    const isWrong = isQuizSubmitted && isSelected && selectedOptIdx !== q.correct;
+
                     return (
-                      <div key={qIdx} className="bg-[#080808] p-3 rounded-xl border border-white/[0.04] space-y-2">
-                        <div className="font-semibold text-xs text-white leading-snug">
-                          {qIdx + 1}. {q.q}
+                      <div
+                        key={qIdx}
+                        className={`p-4 rounded-xl border transition-all space-y-3 ${
+                          isQuizSubmitted
+                            ? isCorrect
+                              ? "bg-[#10B981]/[0.03] border-[#10B981]/30"
+                              : "bg-[#EF4444]/[0.03] border-[#EF4444]/30"
+                            : "bg-[#080808] border-white/[0.06]"
+                        }`}
+                      >
+                        {/* Question Header */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="font-semibold text-xs sm:text-[13px] text-white leading-relaxed font-fa" dir="rtl">
+                            <span className="inline-block font-mono text-[#06B6D4] ml-1.5 font-bold">
+                              سوال {qIdx + 1}:
+                            </span>
+                            {q.q}
+                          </div>
+                          {isQuizSubmitted && (
+                            <span
+                              className={`shrink-0 text-[10px] font-fa font-bold px-2 py-0.5 rounded-md ${
+                                isCorrect
+                                  ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40"
+                                  : "bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/40"
+                              }`}
+                            >
+                              {isCorrect ? "✓ صحیح" : "✗ نادرست"}
+                            </span>
+                          )}
                         </div>
-                        <div className="space-y-1.5">
+
+                        {/* Options List */}
+                        <div className="space-y-2">
                           {q.options.map((opt, optIdx) => {
-                            let btnStyle = "bg-white/[0.02] border-white/[0.05] text-white/75 hover:bg-white/[0.05]";
-                            if (isAnswered) {
-                              if (optIdx === q.correct) {
-                                btnStyle = "bg-[#10B981]/15 border-[#10B981]/50 text-[#10B981] font-bold";
-                              } else if (selected === optIdx) {
-                                btnStyle = "bg-[#EF4444]/15 border-[#EF4444]/50 text-[#EF4444]";
+                            const isThisOptionSelected = selectedOptIdx === optIdx;
+                            const isThisOptionCorrect = optIdx === q.correct;
+
+                            let optionStyles = "bg-white/[0.02] border-white/[0.06] text-white/80 hover:bg-white/[0.05]";
+                            let bulletStyles = "border-white/30 text-transparent";
+
+                            if (!isQuizSubmitted) {
+                              if (isThisOptionSelected) {
+                                optionStyles = "bg-[#06B6D4]/15 border-[#06B6D4]/60 text-white font-medium shadow-sm shadow-[#06B6D4]/10";
+                                bulletStyles = "border-[#06B6D4] bg-[#06B6D4] text-white";
+                              }
+                            } else {
+                              // Submitted State
+                              if (isThisOptionCorrect) {
+                                optionStyles = "bg-[#10B981]/20 border-[#10B981]/60 text-[#10B981] font-semibold";
+                                bulletStyles = "border-[#10B981] bg-[#10B981] text-black font-bold";
+                              } else if (isThisOptionSelected && !isThisOptionCorrect) {
+                                optionStyles = "bg-[#EF4444]/20 border-[#EF4444]/60 text-[#EF4444] font-medium";
+                                bulletStyles = "border-[#EF4444] bg-[#EF4444] text-white font-bold";
                               } else {
-                                btnStyle = "opacity-35 border-white/[0.03] text-white/35";
+                                optionStyles = "opacity-40 border-white/[0.03] text-white/40";
+                                bulletStyles = "border-white/10 text-transparent";
                               }
                             }
+
                             return (
                               <button
                                 key={optIdx}
-                                onClick={() => {
-                                  if (!isAnswered) {
-                                    handleSelectQuizOption(qIdx, optIdx);
-                                  }
-                                }}
-                                disabled={isAnswered}
-                                className={`w-full text-left text-xs p-2.5 rounded-lg border transition-all cursor-pointer leading-relaxed ${btnStyle}`}
+                                type="button"
+                                onClick={() => handleSelectQuizOption(qIdx, optIdx)}
+                                disabled={isQuizSubmitted}
+                                className={`w-full flex items-center justify-between gap-3 text-right p-3 rounded-xl border transition-all text-xs sm:text-[12.5px] leading-relaxed cursor-pointer font-fa ${optionStyles} ${
+                                  isQuizSubmitted ? "cursor-default" : ""
+                                }`}
+                                dir="rtl"
                               >
-                                {opt}
+                                <div className="flex items-center gap-2.5 flex-1">
+                                  <div
+                                    className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 text-[9px] transition-all ${bulletStyles}`}
+                                  >
+                                    {!isQuizSubmitted && isThisOptionSelected ? "●" : isQuizSubmitted && isThisOptionCorrect ? "✓" : isQuizSubmitted && isThisOptionSelected ? "✗" : ""}
+                                  </div>
+                                  <span className="flex-1">{opt}</span>
+                                </div>
+                                {isQuizSubmitted && isThisOptionCorrect && (
+                                  <span className="text-[10px] text-[#10B981] font-bold shrink-0 font-fa">
+                                    پاسخ صحیح
+                                  </span>
+                                )}
                               </button>
                             );
                           })}
                         </div>
-                        {isAnswered && (
-                          <div className="mt-1.5 p-2 bg-[#050505] rounded-lg text-[10.5px] sm:text-[11px] text-white/70 border border-white/[0.04] leading-relaxed">
-                            <strong className="text-[#F59E0B] block mb-0.5">Explanation:</strong>
-                            {q.explanation}
+
+                        {/* Post-Audit Grounded Explanation */}
+                        {isQuizSubmitted && (
+                          <div className="mt-2.5 p-3 bg-[#050505] rounded-xl text-xs text-white/80 border border-white/[0.06] leading-relaxed font-fa space-y-1" dir="rtl">
+                            <div className="flex items-center gap-1.5 text-[#F59E0B] font-bold text-[11px]">
+                              <span>💡 تحلیل و استناد مفهومی جزوه:</span>
+                            </div>
+                            <p className="text-white/75 text-[11.5px]">{q.explanation}</p>
                           </div>
                         )}
                       </div>
                     );
                   })}
+
+                  {/* Submission & Grading Action Box */}
+                  <div className="bg-[#080808] p-4 rounded-xl border border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1 font-fa" dir="rtl">
+                      <div className="text-xs text-white/70">
+                        {isQuizSubmitted ? (
+                          existingQuizResult?.passed ? (
+                            <span className="text-[#10B981] font-bold">
+                              ✅ تبریک! آزمون تشخیصی با موفقیت پاس شد ({existingQuizResult.score} از {existingQuizResult.total}). شرط آزمون برای تکمیل این درس ثبت شد.
+                            </span>
+                          ) : (
+                            <span className="text-[#EF4444] font-bold">
+                              ⚠️ نتیجه آزمون: {existingQuizResult?.score || 0} از ۳. برای تایید تسلط، حداقل ۲ پاسخ صحیح نیاز است.
+                            </span>
+                          )
+                        ) : (
+                          <span>
+                            وضعیت پاسخ‌دهی:{" "}
+                            <strong className="text-[#06B6D4] font-mono">
+                              {Object.keys(selectedAnswers).length}
+                            </strong>{" "}
+                            از ۳ سوال تکمیل شده است.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {!isQuizSubmitted ? (
+                      <button
+                        onClick={handleSubmitQuiz}
+                        disabled={Object.keys(selectedAnswers).length < quizQuestions.length}
+                        className="text-xs font-fa font-bold px-5 py-2.5 rounded-xl bg-[#06B6D4] text-black hover:bg-[#06B6D4]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-lg shadow-[#06B6D4]/15 shrink-0"
+                      >
+                        🎯 ثبت و ممیزی آزمون (Submit & Audit)
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleRetakeQuiz}
+                          className="text-xs font-fa px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] text-white font-medium transition-colors cursor-pointer border border-white/[0.06]"
+                        >
+                          تلاش مجدد
+                        </button>
+                        <button
+                          onClick={handleFetchQuiz}
+                          disabled={isLoadingQuiz}
+                          className="text-xs font-fa px-4 py-2 rounded-xl bg-[#06B6D4]/15 hover:bg-[#06B6D4]/25 text-[#06B6D4] font-bold transition-colors cursor-pointer border border-[#06B6D4]/30"
+                        >
+                          سوالات جدید از جزوه ⚡
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
-                <div className="py-8 text-center space-y-2 bg-[#080808] rounded-2xl border border-white/[0.04] p-4">
-                  <p className="text-white/45 font-fa text-xs" dir="rtl">
-                    برای باز شدن گیت شناختی این درس، گذراندن آزمون تشخیصی ۳ سوالی الزامی است.
-                  </p>
+                <div className="py-10 text-center space-y-3 bg-[#080808] rounded-2xl border border-white/[0.04] p-6">
+                  <div className="w-12 h-12 mx-auto rounded-2xl bg-[#06B6D4]/10 border border-[#06B6D4]/25 flex items-center justify-center text-xl">
+                    📝
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-sm font-bold text-white font-fa">
+                      آزمون تشخیصی تسلط مفهومی
+                    </div>
+                    <p className="text-white/50 font-fa text-xs max-w-md mx-auto leading-relaxed" dir="rtl">
+                      سوالات این آزمون دقیقاً و منحصراً بر اساس متن همین جزوه طراحی می‌شوند تا تسلط واقعی شما ارزیابی شده و گیت شناختی درس تایید شود.
+                    </p>
+                  </div>
                   <button
                     onClick={handleFetchQuiz}
-                    className="text-xs font-mono px-4 py-2 rounded-xl bg-[#F59E0B] text-black font-bold hover:bg-[#F59E0B]/90 transition-all cursor-pointer shadow-md shadow-[#F59E0B]/10"
+                    disabled={isLoadingQuiz}
+                    className="text-xs font-fa px-5 py-2.5 rounded-xl bg-[#06B6D4] text-black font-bold hover:bg-[#06B6D4]/90 transition-all cursor-pointer shadow-md shadow-[#06B6D4]/15"
                   >
-                    شروع آزمون تشخیصی (Generate Diagnostic Quiz)
+                    شروع آزمون تشخیصی ۳ سوالی 🚀
                   </button>
                 </div>
               )}
