@@ -60,7 +60,7 @@ interface NatalContextType extends NatalState {
 const NatalContext = createContext<NatalContextType | null>(null);
 
 const STORAGE_KEY = "natal-v3";
-const CURRICULUM_KEY = "natal-curriculum-v3";
+const CURRICULUM_KEY = "natal-curriculum-v4.1-final";
 const POMODORO_STORAGE_KEY = "natal-pomodoro-sync-v3";
 
 export const NatalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -367,22 +367,17 @@ export const NatalProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     let isUnlocked = true;
     let prerequisiteTitle: string | undefined = undefined;
+    let prerequisiteId: string | undefined = undefined;
 
     if (itemIndex > 0) {
-      // Check if immediate predecessor is completed
-      const prevItem = orderedItems[itemIndex - 1];
-      if (!state.checked.includes(prevItem.id)) {
-        isUnlocked = false;
-        prerequisiteTitle = `${prevItem.phaseTitle} • ${prevItem.title}`;
-      } else {
-        // Also verify all prior items in sequence are completed (no jumping ahead)
-        for (let idx = 0; idx < itemIndex; idx++) {
-          if (!state.checked.includes(orderedItems[idx].id)) {
-            isUnlocked = false;
-            const missingItem = orderedItems[idx];
-            prerequisiteTitle = `${missingItem.phaseTitle} • ${missingItem.title}`;
-            break;
-          }
+      // Find the first uncompleted prior item in sequence
+      for (let idx = 0; idx < itemIndex; idx++) {
+        if (!state.checked.includes(orderedItems[idx].id)) {
+          isUnlocked = false;
+          const missingItem = orderedItems[idx];
+          prerequisiteTitle = `${missingItem.phaseTitle} • ${missingItem.title}`;
+          prerequisiteId = missingItem.id;
+          break;
         }
       }
     }
@@ -435,6 +430,7 @@ export const NatalProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       quizResult,
       unmetReasons,
       prerequisiteTitle,
+      prerequisiteId,
       dueReviewsCount: dueReviews.length,
       completedTodayCount,
       dailyBudget: budgetInfo.budget,

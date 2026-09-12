@@ -7,9 +7,29 @@ interface LessonModalProps {
   lessonId: string;
   phases?: Phase[];
   onClose: () => void;
+  onSelectLesson?: (lessonId: string) => void;
 }
 
-export const LessonModal: React.FC<LessonModalProps> = ({ lessonId, phases: propPhases, onClose }) => {
+export const LessonModal: React.FC<LessonModalProps> = ({
+  lessonId: initialLessonId,
+  phases: propPhases,
+  onClose,
+  onSelectLesson,
+}) => {
+  const [activeLessonId, setActiveLessonId] = useState(initialLessonId);
+
+  // Sync if prop changes
+  React.useEffect(() => {
+    setActiveLessonId(initialLessonId);
+  }, [initialLessonId]);
+
+  const handleSwitchLesson = (newId: string) => {
+    setActiveLessonId(newId);
+    if (onSelectLesson) {
+      onSelectLesson(newId);
+    }
+  };
+
   const {
     phases: storePhases,
     checked,
@@ -26,8 +46,10 @@ export const LessonModal: React.FC<LessonModalProps> = ({ lessonId, phases: prop
     saveQuizResult,
     quizResults,
     setActiveTab: setStoreActiveTab,
+    unlockPlanNow,
   } = useNatal();
 
+  const lessonId = activeLessonId;
   const phases = propPhases || storePhases;
 
   // Find lesson details
@@ -123,8 +145,8 @@ export const LessonModal: React.FC<LessonModalProps> = ({ lessonId, phases: prop
     const cleanMarkdown = sanitizeAndFormatLectureMarkdown(markdown);
     if (layerId === "all") return cleanMarkdown;
 
-    const sections = cleanMarkdown.split(/(?=^##\s+)/m);
-    const headerTitle = sections[0].startsWith("# ") ? sections[0] : "";
+    const sections = cleanMarkdown.split(/(?=^#{2,3}\s+)/m);
+    const headerTitle = sections[0].startsWith("# ") || sections[0].startsWith("📖 ") ? sections[0] : "";
 
     let match: string | undefined;
     if (layerId === "layer-1") {
@@ -146,7 +168,7 @@ export const LessonModal: React.FC<LessonModalProps> = ({ lessonId, phases: prop
     }
 
     if (!match) return cleanMarkdown;
-    return headerTitle && !match.includes("# ") ? `${headerTitle}\n\n${match}` : match;
+    return headerTitle && !match.includes("📖 ") ? `${headerTitle}\n\n${match}` : match;
   };
 
   // Feynman helper state
@@ -390,87 +412,168 @@ export const LessonModal: React.FC<LessonModalProps> = ({ lessonId, phases: prop
           </button>
         </div>
 
-        {/* Cognitive Gate Alert Banner if incomplete */}
-        {!isCompleted && !gateStatus.canComplete && (
-          <div className="px-3 py-1.5 sm:px-3.5 sm:py-2 bg-[#090909] border-b border-white/[0.04] space-y-1 flex-shrink-0">
-            {/* Gate Lock Notification */}
-            {gateStatus.isGateLocked && (
-              <div className="flex items-center justify-between gap-1.5 p-1.5 sm:p-2 rounded-lg bg-[#EF4444]/10 border border-[#EF4444]/25 text-[10px] sm:text-[11px] text-[#EF4444]">
-                <div className="flex items-center gap-1 font-fa truncate" dir="rtl">
-                  <span>⛔</span>
-                  <span className="truncate"><strong>قفل مرور:</strong> {gateStatus.dueReviewsCount} کارت موعدرسیده در صف SM-2.</span>
+        {/* Modal Body & Tab Navigation or Gated Screen */}
+        {!isCompleted && !gateStatus.isUnlocked ? (
+          /* 1. Prerequisite Lock View */
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-[#F59E0B]/10 border border-[#F59E0B]/30 flex items-center justify-center text-2xl shadow-lg shadow-[#F59E0B]/10 animate-pulse">
+              🔒
+            </div>
+
+            <div className="space-y-1.5 max-w-md">
+              <span className="text-[10px] font-mono uppercase text-[#F59E0B] font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-[#F59E0B]/10 border border-[#F59E0B]/20">
+                PREREQUISITE LOCKED
+              </span>
+              <h3 className="text-sm sm:text-base font-bold text-white font-fa pt-1">
+                این سرفصل قفل است و دسترسی به آن هنوز بازگشایی نشده است
+              </h3>
+              <p className="text-[11px] sm:text-xs text-white/50 font-fa leading-relaxed text-center" dir="rtl">
+                طبق اصول یادگیری مهندسی Natal، هر مبحث بر پایه درک عمیق مباحث قبلی بنا شده است. برای جلوگیری از یادگیری سطحی و توهم تسلط، دسترسی به جزوه و تمرینات این درس پس از گذراندن و ثبت پیش‌نیازها فعال خواهد شد.
+              </p>
+            </div>
+
+            {gateStatus.prerequisiteTitle && (
+              <div className="w-full max-w-md bg-[#080808] border border-white/[0.08] rounded-xl p-3.5 text-right space-y-2.5" dir="rtl">
+                <div className="flex items-center justify-between text-[10.5px] font-mono text-white/40">
+                  <span>پیش‌نیاز الزامی برای بازگشایی:</span>
+                  <span className="text-[#F59E0B] font-bold">مرحله قبل</span>
                 </div>
-                <button
-                  onClick={() => {
-                    onClose();
-                    setStoreActiveTab("review");
-                  }}
-                  className="px-2 py-0.5 rounded bg-[#EF4444]/20 hover:bg-[#EF4444]/30 text-[9.5px] sm:text-[10px] font-bold whitespace-nowrap cursor-pointer transition-colors flex-shrink-0"
-                >
-                  مرور
-                </button>
+                <div className="text-xs font-bold text-white font-fa bg-white/[0.03] p-2.5 rounded-lg border border-white/[0.04]">
+                  {gateStatus.prerequisiteTitle}
+                </div>
+                {gateStatus.prerequisiteId && (
+                  <button
+                    onClick={() => handleSwitchLesson(gateStatus.prerequisiteId!)}
+                    className="w-full py-2.5 px-3 rounded-lg bg-[#F59E0B] hover:bg-[#F59E0B]/90 active:bg-[#F59E0B]/80 text-black font-bold text-xs font-fa cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-md shadow-[#F59E0B]/15"
+                  >
+                    <span>🚀 انتقال به درس پیش‌نیاز و شروع مطالعه</span>
+                  </button>
+                )}
               </div>
             )}
 
-            {/* Prerequisite Alert */}
-            {!gateStatus.isUnlocked && gateStatus.prerequisiteTitle && (
-              <div className="flex items-center gap-1.5 p-1.5 sm:p-2 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/20 text-[10px] sm:text-[11px] text-[#F59E0B] font-fa" dir="rtl">
-                <span>🔒</span>
-                <span className="truncate"><strong>پیش‌نیاز:</strong> ابتدا «{gateStatus.prerequisiteTitle}» را تکمیل کنید.</span>
-              </div>
-            )}
-
-            {/* Budget Exceeded Alert */}
-            {gateStatus.isBudgetExceeded && (
-              <div className="flex items-center gap-1.5 p-1.5 sm:p-2 rounded-lg bg-[#8B5CF6]/10 border border-[#8B5CF6]/20 text-[10px] sm:text-[11px] text-[#8B5CF6] font-fa" dir="rtl">
-                <span>⚡</span>
-                <span className="truncate"><strong>سقف شناختی روزانه:</strong> حداکثر {gateStatus.dailyBudget} درس در روز ({gateStatus.completedTodayCount} درس ثبت شده).</span>
-              </div>
-            )}
+            <button
+              onClick={onClose}
+              className="text-xs text-white/40 hover:text-white font-fa pt-2 transition-colors cursor-pointer"
+            >
+              بازگشت به نقشه راه
+            </button>
           </div>
-        )}
+        ) : !isCompleted && gateStatus.isGateLocked ? (
+          /* 2. Review Gate Lock View */
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-[#EF4444]/10 border border-[#EF4444]/30 flex items-center justify-center text-2xl">
+              ⛔
+            </div>
 
-        {/* Tab Navigation - Mobile-First Segmented Bar */}
-        <div className="flex items-center px-1.5 sm:px-2 border-b border-white/[0.05] bg-[#070707] text-xs font-medium overflow-x-auto gap-0.5 sm:gap-1 scrollbar-none flex-shrink-0">
-          {[
-            { id: "ai-lecture", icon: "📖", label: "جزوه", en: "Lecture" },
-            { id: "notes", icon: "📝", label: "یادداشت", en: "Notes", badge: hasNote },
-            { id: "feynman", icon: "🧠", label: "فاینمن", en: "Feynman", badge: hasFeynman },
-            { id: "quiz", icon: "🎯", label: "آزمون", en: "Quiz", badge: !gateStatus.needQuizPass },
-            { id: "mentor", icon: "💬", label: "مربی", en: "Mentor", badgeCount: tutorHistory.length },
-          ].map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
+            <div className="space-y-1.5 max-w-md">
+              <span className="text-[10px] font-mono uppercase text-[#EF4444] font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-[#EF4444]/10 border border-[#EF4444]/20">
+                SM-2 REVIEW GATE ACTIVE
+              </span>
+              <h3 className="text-sm sm:text-base font-bold text-white font-fa pt-1">
+                دروازه مرور هوشمند SM-2 فعال است
+              </h3>
+              <p className="text-[11px] sm:text-xs text-white/50 font-fa leading-relaxed text-center" dir="rtl">
+                شما <strong className="text-rose-400 font-mono">{gateStatus.dueReviewsCount}</strong> کارت موعدرسیده در صف تکرار فاصله‌دار دارید. برای پایدارسازی اتصالات سیناپسی و جلوگیری از فراموشی، مرور کارت‌ها قبل از یادگیری درس‌های جدید الزامی است.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
               <button
-                key={tab.id}
                 onClick={() => {
-                  setActiveTab(tab.id as any);
-                  if (tab.id === "quiz" && quizQuestions.length === 0) handleFetchQuiz();
+                  onClose();
+                  setStoreActiveTab("review");
                 }}
-                className={`flex-1 min-w-[56px] sm:min-w-[62px] flex flex-col items-center justify-center py-2 px-1 border-b-2 text-xs transition-all cursor-pointer relative ${
-                  isActive
-                    ? "border-[#F59E0B] text-[#F59E0B] font-bold bg-[#F59E0B]/[0.03]"
-                    : "border-transparent text-white/40 hover:text-white/75"
-                }`}
+                className="py-2.5 px-4 rounded-xl bg-[#EF4444] hover:bg-[#EF4444]/90 text-black font-bold text-xs font-fa cursor-pointer transition-all flex items-center gap-1.5 shadow-md shadow-[#EF4444]/15"
               >
-                <div className="flex items-center gap-1">
-                  <span className="text-xs">{tab.icon}</span>
-                  <span className="text-[10.5px] sm:text-[11px] font-fa">{tab.label}</span>
-                  {tab.badge && <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />}
-                  {tab.badgeCount !== undefined && tab.badgeCount > 0 && (
-                    <span className="px-1 text-[8px] font-mono rounded bg-[#06B6D4]/20 text-[#06B6D4]">
-                      {tab.badgeCount}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[8.5px] sm:text-[9px] font-mono text-white/20 tracking-tighter hidden xs:inline">{tab.en}</span>
+                <span>🧠 ورود به جعبه مرور SM-2</span>
               </button>
-            );
-          })}
-        </div>
+              <button
+                onClick={onClose}
+                className="py-2.5 px-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white/60 text-xs font-fa cursor-pointer transition-all"
+              >
+                بستن
+              </button>
+            </div>
+          </div>
+        ) : !isCompleted && gateStatus.isBudgetExceeded ? (
+          /* 3. Daily Budget Exceeded Lock View */
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 flex items-center justify-center text-2xl">
+              ⚡
+            </div>
 
-        {/* Tab Content Body with independent smooth scroll */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-3.5 text-xs w-full max-w-full">
+            <div className="space-y-1.5 max-w-md">
+              <span className="text-[10px] font-mono uppercase text-[#8B5CF6] font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-[#8B5CF6]/10 border border-[#8B5CF6]/20">
+                DAILY CEILING REACHED
+              </span>
+              <h3 className="text-sm sm:text-base font-bold text-white font-fa pt-1">
+                سقف ظرفیت شناختی امروز پر شده است
+              </h3>
+              <p className="text-[11px] sm:text-xs text-white/50 font-fa leading-relaxed text-center" dir="rtl">
+                شما امروز <strong className="text-purple-400 font-mono">{gateStatus.completedTodayCount}</strong> درس از سقف مجاز <strong className="text-purple-400 font-mono">{gateStatus.dailyBudget}</strong> درس را تکمیل کرده‌اید. جهت تثبیت در خواب عمیق، ادامه یادگیری توصیه نمی‌شود.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={unlockPlanNow}
+                className="py-2.5 px-3.5 rounded-xl bg-[#8B5CF6] hover:bg-[#8B5CF6]/90 text-black font-bold text-xs font-fa cursor-pointer transition-all flex items-center gap-1.5 shadow-md shadow-[#8B5CF6]/15"
+              >
+                <span>+ بازگشایی اضطراری سقف امروز</span>
+              </button>
+              <button
+                onClick={onClose}
+                className="py-2.5 px-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white/60 text-xs font-fa cursor-pointer transition-all"
+              >
+                بستن و استراحت
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Normal Unlocked Lesson Tabs */
+          <>
+            {/* Tab Navigation - Mobile-First Segmented Bar */}
+            <div className="flex items-center px-1.5 sm:px-2 border-b border-white/[0.05] bg-[#070707] text-xs font-medium overflow-x-auto gap-0.5 sm:gap-1 scrollbar-none flex-shrink-0">
+              {[
+                { id: "ai-lecture", icon: "📖", label: "جزوه", en: "Lecture" },
+                { id: "notes", icon: "📝", label: "یادداشت", en: "Notes", badge: hasNote },
+                { id: "feynman", icon: "🧠", label: "فاینمن", en: "Feynman", badge: hasFeynman },
+                { id: "quiz", icon: "🎯", label: "آزمون", en: "Quiz", badge: !gateStatus.needQuizPass },
+                { id: "mentor", icon: "💬", label: "مربی", en: "Mentor", badgeCount: tutorHistory.length },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id as any);
+                      if (tab.id === "quiz" && quizQuestions.length === 0) handleFetchQuiz();
+                    }}
+                    className={`flex-1 min-w-[56px] sm:min-w-[62px] flex flex-col items-center justify-center py-2 px-1 border-b-2 text-xs transition-all cursor-pointer relative ${
+                      isActive
+                        ? "border-[#F59E0B] text-[#F59E0B] font-bold bg-[#F59E0B]/[0.03]"
+                        : "border-transparent text-white/40 hover:text-white/75"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs">{tab.icon}</span>
+                      <span className="text-[10.5px] sm:text-[11px] font-fa">{tab.label}</span>
+                      {tab.badge && <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />}
+                      {tab.badgeCount !== undefined && tab.badgeCount > 0 && (
+                        <span className="px-1 text-[8px] font-mono rounded bg-[#06B6D4]/20 text-[#06B6D4]">
+                          {tab.badgeCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[8.5px] sm:text-[9px] font-mono text-white/20 tracking-tighter hidden xs:inline">{tab.en}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Tab Content Body with independent smooth scroll */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-3.5 text-xs w-full max-w-full">
           {/* TAB 1: AI LECTURE */}
           {activeTab === "ai-lecture" && (
             <div className="space-y-3 w-full max-w-full">
@@ -1032,70 +1135,72 @@ export const LessonModal: React.FC<LessonModalProps> = ({ lessonId, phases: prop
           </div>
         )}
 
-        {/* Modal Footer */}
-        <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-t border-white/[0.05] bg-[#080808] flex items-center justify-between gap-2 flex-shrink-0">
-          {/* Cognitive Mastery Gate Indicators */}
-          <div className="flex items-center gap-1.5 text-[8.5px] sm:text-[9.5px] font-mono">
-            <span className={hasNote ? "text-[#10B981] font-bold" : "text-white/25"}>
-              {hasNote ? "✓" : "○"} Note
-            </span>
-            <span className={hasFeynman ? "text-[#10B981] font-bold" : "text-white/25"}>
-              {hasFeynman ? "✓" : "○"} Feynman
-            </span>
-            <span className={!gateStatus.needQuizPass ? "text-[#10B981] font-bold" : "text-white/25"}>
-              {!gateStatus.needQuizPass ? "✓" : "○"} Quiz
-            </span>
-            <span className={hasDiff ? "text-[#10B981] font-bold" : "text-white/25"}>
-              {hasDiff ? "✓" : "○"} Stars
-            </span>
-          </div>
+            {/* Modal Footer */}
+            <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-t border-white/[0.05] bg-[#080808] flex items-center justify-between gap-2 flex-shrink-0">
+              {/* Cognitive Mastery Gate Indicators */}
+              <div className="flex items-center gap-1.5 text-[8.5px] sm:text-[9.5px] font-mono">
+                <span className={hasNote ? "text-[#10B981] font-bold" : "text-white/25"}>
+                  {hasNote ? "✓" : "○"} Note
+                </span>
+                <span className={hasFeynman ? "text-[#10B981] font-bold" : "text-white/25"}>
+                  {hasFeynman ? "✓" : "○"} Feynman
+                </span>
+                <span className={!gateStatus.needQuizPass ? "text-[#10B981] font-bold" : "text-white/25"}>
+                  {!gateStatus.needQuizPass ? "✓" : "○"} Quiz
+                </span>
+                <span className={hasDiff ? "text-[#10B981] font-bold" : "text-white/25"}>
+                  {hasDiff ? "✓" : "○"} Stars
+                </span>
+              </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                if (isCompleted) {
-                  toggleLesson(lessonId);
-                  onClose();
-                  return;
-                }
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (isCompleted) {
+                      toggleLesson(lessonId);
+                      onClose();
+                      return;
+                    }
 
-                if (!gateStatus.canComplete) {
-                  const reason = gateStatus.unmetReasons[0] || "شرایط تکمیل این درس هنوز فراهم نشده است.";
-                  setValidationError(reason);
-                  return;
-                }
+                    if (!gateStatus.canComplete) {
+                      const reason = gateStatus.unmetReasons[0] || "شرایط تکمیل این درس هنوز فراهم نشده است.";
+                      setValidationError(reason);
+                      return;
+                    }
 
-                const res = toggleLesson(lessonId);
-                if (res.success) {
-                  onClose();
-                } else {
-                  setValidationError(res.reason || "خطا در ثبت درس.");
-                }
-              }}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                isCompleted
-                  ? "bg-white/[0.05] hover:bg-white/[0.08] text-white/70 border border-white/[0.05]"
-                  : gateStatus.canComplete
-                  ? "bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-black shadow-md shadow-[#F59E0B]/10 active:scale-98"
-                  : "bg-white/[0.03] text-white/35 border border-white/[0.04] hover:bg-white/[0.05]"
-              }`}
-            >
-              {isCompleted ? (
-                <span>Mark Incomplete</span>
-              ) : gateStatus.canComplete ? (
-                <>
-                  <span>✓</span>
-                  <span>Complete Lesson</span>
-                </>
-              ) : (
-                <>
-                  <span>🔒</span>
-                  <span>Complete Lesson</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
+                    const res = toggleLesson(lessonId);
+                    if (res.success) {
+                      onClose();
+                    } else {
+                      setValidationError(res.reason || "خطا در ثبت درس.");
+                    }
+                  }}
+                  className={`px-3 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    isCompleted
+                      ? "bg-white/[0.05] hover:bg-white/[0.08] text-white/70 border border-white/[0.05]"
+                      : gateStatus.canComplete
+                      ? "bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-black shadow-md shadow-[#F59E0B]/10 active:scale-98"
+                      : "bg-white/[0.03] text-white/35 border border-white/[0.04] hover:bg-white/[0.05]"
+                  }`}
+                >
+                  {isCompleted ? (
+                    <span>Mark Incomplete</span>
+                  ) : gateStatus.canComplete ? (
+                    <>
+                      <span>✓</span>
+                      <span>Complete Lesson</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🔒</span>
+                      <span>Complete Lesson</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

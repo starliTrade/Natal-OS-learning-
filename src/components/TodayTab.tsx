@@ -23,7 +23,6 @@ export const TodayTab: React.FC = () => {
     notes,
     feynmanNotes,
     difficulty,
-    ensurePlan,
     unlockPlanNow,
     toggleLesson,
     getLessonGateStatus,
@@ -33,8 +32,8 @@ export const TodayTab: React.FC = () => {
 
   // Formatted dates
   const todayDateEn = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
+    weekday: "short",
+    month: "short",
     day: "numeric",
   });
   const todayDateFa = new Intl.DateTimeFormat("fa-IR", {
@@ -43,7 +42,7 @@ export const TodayTab: React.FC = () => {
     month: "long",
   }).format(new Date());
 
-  // Pomodoro
+  // Pomodoro computations
   const minutes = Math.floor(pomodoroTimeLeft / 60);
   const seconds = pomodoroTimeLeft % 60;
   const timeFormatted = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
@@ -70,227 +69,356 @@ export const TodayTab: React.FC = () => {
     return parseLessonId(lessonId, phases);
   };
 
+  // Next actionable lesson for the Hero Spotlight
+  const nextTargetLessonId = planLessonIds.find((id) => !checked.includes(id)) || planLessonIds[0];
+  const heroLessonDetails = nextTargetLessonId ? getLessonDetails(nextTargetLessonId) : null;
+  const heroGateStatus = nextTargetLessonId ? getLessonGateStatus(nextTargetLessonId) : null;
+  const isHeroDone = nextTargetLessonId ? checked.includes(nextTargetLessonId) : false;
+
   return (
-    <div id="today-tab" className="px-4 pt-5 pb-8 font-sans w-full max-w-[440px] mx-auto text-white">
-      {/* Top Header */}
-      <div className="mb-5">
-        <div className="flex items-center justify-between">
-          <div className="text-[11px] font-semibold text-white/30 tracking-widest uppercase font-mono mb-1">
+    <div id="today-tab" className="px-4 pt-4 pb-12 font-sans w-full max-w-[440px] mx-auto text-white selection:bg-[#F59E0B] selection:text-black">
+      
+      {/* 1. Header Bar */}
+      <header className="mb-4">
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
+            <span className="text-[10px] font-mono text-white/60">
+              Natal Engine
+            </span>
+          </div>
+
+          <div className="text-[11px] font-mono text-white/40">
             {todayDateEn}
           </div>
-          <div className="text-[11px] text-white/30 font-fa" dir="rtl">
-            {todayDateFa}
+        </div>
+
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className="text-[26px] font-extrabold text-white tracking-tight leading-tight font-fa" dir="rtl">
+              برنامه امروز
+            </h1>
+            <p className="text-[12px] text-white/40 font-fa mt-0.5" dir="rtl">
+              {todayDateFa}
+            </p>
+          </div>
+
+          <div className="text-right">
+            <span className="inline-block px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[11px] font-mono text-white/70">
+              {planCompleted}/{planTotal} تکمیل‌شده
+            </span>
           </div>
         </div>
-        <div className="text-[28px] font-extrabold text-white tracking-tight leading-none">
-          Today
-        </div>
-      </div>
+      </header>
 
-      {/* Review Gate Warning if reviews are due */}
+      {/* 2. Review Gate Warning (If Spaced Repetition Due) */}
       {!isGateOpen && dueReviews.length > 0 && (
         <div
           id="due-reviews-warning"
-          className="bg-[#EF4444]/[0.08] border border-[#EF4444]/25 rounded-2xl p-3.5 mb-4 flex items-center gap-3 transition-all"
+          className="relative overflow-hidden bg-rose-950/20 border border-rose-500/25 rounded-xl p-3.5 mb-4"
         >
-          <div className="w-9 h-9 rounded-xl flex-shrink-0 bg-[#EF4444]/15 border border-[#EF4444]/30 flex items-center justify-center text-[#EF4444]">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold text-[#EF4444] leading-tight">
-              {dueReviews.length} review{dueReviews.length > 1 ? "s" : ""} due
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg flex-shrink-0 bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                </svg>
+              </div>
+              <div className="text-right" dir="rtl">
+                <div className="text-xs font-bold text-rose-300 font-fa flex items-center gap-1.5">
+                  <span>دروازه مرور فعال است</span>
+                  <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-200 text-[10px] font-mono">
+                    {dueReviews.length} کارت
+                  </span>
+                </div>
+                <div className="text-[11px] text-white/50 font-fa mt-0.5">
+                  مرور کارت‌های تکرار فاصله‌دار برای تثبیت حافظه الزامی است.
+                </div>
+              </div>
             </div>
-            <div className="text-[11px] text-white/40 leading-snug font-fa mt-0.5" dir="rtl">
-              مرور کارت‌ها قبل از یادگیری درس‌های جدید الزامی است
-            </div>
+
+            <button
+              onClick={() => setActiveTab("review")}
+              className="bg-rose-500 hover:bg-rose-400 text-black font-bold font-fa text-[11px] px-3 py-1.5 rounded-lg cursor-pointer transition-all flex-shrink-0"
+            >
+              مرور سریع
+            </button>
           </div>
-          <button
-            onClick={() => setActiveTab("review")}
-            className="bg-[#EF4444]/20 hover:bg-[#EF4444]/30 border border-[#EF4444]/40 rounded-lg px-3 py-1.5 text-[#EF4444] text-[11px] font-bold cursor-pointer transition-colors flex-shrink-0 font-sans"
-          >
-            Review Now
-          </button>
         </div>
       )}
 
-      {/* 2-Column Metrics Grid: Overall Progress & Daily Budget */}
-      <div className="grid grid-cols-2 gap-2.5 mb-3.5">
-        {/* Card 1: Progress */}
-        <div className="linear-card p-3.5 relative overflow-hidden flex flex-col justify-between">
-          <div className="text-[9px] text-white/35 font-mono uppercase tracking-wider mb-1.5">
-            Curriculum
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-[28px] font-extrabold font-mono text-[#F59E0B] tracking-tight leading-none">
-              {totalProgressPercent}
-            </span>
-            <span className="text-sm text-[#F59E0B] font-mono">%</span>
-          </div>
-          <div className="text-[9px] text-white/30 font-mono mt-1">
-            {totalCheckedCount}/{totalLessonsCount} items
+      {/* 3. Hero Feature Spotlight */}
+      {heroLessonDetails && (
+        <div className="linear-card p-4 mb-4 relative overflow-hidden group">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[#F59E0B] font-bold">
+                  FOCUS TARGET
+                </span>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-white/50">
+                {heroLessonDetails.phase.split(":")[0] || "فاز جاری"}
+              </span>
+            </div>
+
+            {/* Lesson Title */}
+            <div className="mb-3 text-right" dir="rtl">
+              <h2 className="text-[16px] font-extrabold text-white font-fa leading-snug group-hover:text-[#F59E0B] transition-colors">
+                {heroLessonDetails.fa}
+              </h2>
+              <p className="text-[11px] font-mono text-white/40 mt-0.5 tracking-tight" dir="ltr">
+                {heroLessonDetails.title}
+              </p>
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (nextTargetLessonId) {
+                      toggleLesson(nextTargetLessonId);
+                    }
+                  }}
+                  title={isHeroDone ? "علامت‌گذاری به عنوان انجام‌نشده" : "تکمیل درس"}
+                  className={`w-6 h-6 rounded-md flex items-center justify-center transition-all cursor-pointer ${
+                    isHeroDone
+                      ? "bg-[#F59E0B] text-black"
+                      : "bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.12] text-white/40 hover:text-white"
+                  }`}
+                >
+                  {isHeroDone ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : (
+                    <span className="w-1.5 h-1.5 rounded-sm bg-[#F59E0B]" />
+                  )}
+                </button>
+                <span className="text-[11px] font-fa text-white/40" dir="rtl">
+                  {isHeroDone ? "تکمیل شد ✓" : "تخمین: ۲۵ دقیقه مطالعه"}
+                </span>
+              </div>
+
+              <button
+                onClick={() => setSelectedLessonId(nextTargetLessonId)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-black font-extrabold text-[11px] font-fa cursor-pointer transition-all"
+              >
+                <span>شروع مطالعه</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Card 2: Cognitive Budget */}
-        <div className={`linear-card p-3.5 flex flex-col justify-between ${budgetInfo.budget > 0 ? "border-[#F59E0B]/20" : ""}`}>
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[9px] text-white/35 font-mono uppercase tracking-wider">
-              Daily Budget
+      {/* 4. Bento Grid */}
+      <div className="grid grid-cols-2 gap-2.5 mb-4">
+        
+        {/* Bento 1: Cognitive Energy & Pace */}
+        <div className="linear-card p-3 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-fa font-bold text-white/40">
+              ظرفیت روزانه
             </span>
-            <div className="flex items-center gap-0.5 bg-white/[0.04] p-0.5 rounded-md border border-white/[0.06]">
+            <div className="flex items-center gap-0.5 bg-[#050505] p-0.5 rounded border border-white/[0.06]">
               {(["relaxed", "standard", "intensive"] as const).map((p) => (
                 <button
                   key={p}
                   onClick={() => setPacePreference(p)}
-                  title={`Pace: ${p} (Ceiling: ${p === "relaxed" ? 2 : p === "standard" ? 3 : 5}/day)`}
-                  className={`px-1.5 py-0.5 text-[8px] font-mono uppercase rounded transition-colors cursor-pointer ${
+                  className={`px-1.5 py-0.5 text-[8.5px] font-fa rounded transition-all cursor-pointer ${
                     pacePreference === p
                       ? "bg-[#F59E0B] text-black font-bold"
                       : "text-white/40 hover:text-white"
                   }`}
                 >
-                  {p[0]}
+                  {p === "relaxed" ? "آرام" : p === "standard" ? "معمولی" : "فشرده"}
                 </button>
               ))}
             </div>
           </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className={`text-[28px] font-extrabold font-mono tracking-tight leading-none ${budgetInfo.budget > 0 ? "text-[#F59E0B]" : "text-white/30"}`}>
-              {budgetInfo.budget}
-            </span>
-            <span className="text-[11px] text-white/25 font-mono">left</span>
+
+          <div className="my-1">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[24px] font-extrabold font-mono text-[#F59E0B] tracking-tight leading-none">
+                {budgetInfo.budget}
+              </span>
+              <span className="text-[11px] font-fa text-white/40">درس باقی‌مانده</span>
+            </div>
+
+            <div className="w-full bg-white/[0.04] h-1.5 rounded-full overflow-hidden mt-2">
+              <div
+                className="h-full bg-[#F59E0B] rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.min(100, Math.max(10, ((budgetInfo.personalCeiling - budgetInfo.budget) / budgetInfo.personalCeiling) * 100))}%`,
+                }}
+              />
+            </div>
           </div>
-          <div className="text-[9px] text-white/30 font-mono mt-1">
-            {budgetInfo.reviewLoad > 0 ? `${budgetInfo.reviewLoad} review load` : `${pacePreference} • cap ${budgetInfo.personalCeiling}`}
+
+          <div className="text-[9.5px] text-white/30 font-fa mt-1 text-right" dir="rtl">
+            سقف: {budgetInfo.personalCeiling} درس در روز
           </div>
         </div>
-      </div>
 
-      {/* Pomodoro Focus Station */}
-      <div className="linear-card p-3.5 mb-3.5">
-        <div className="flex items-center gap-3.5">
-          {/* Circular Progress Ring */}
-          <div className="relative flex-shrink-0">
-            <svg width="46" height="46" className="-rotate-90">
-              <circle cx="23" cy="23" r="19" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
-              <circle
-                cx="23"
-                cy="23"
-                r="19"
-                fill="none"
-                stroke={isWork ? "#F59E0B" : "#10B981"}
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeDasharray={`${pomodoroDash} 125.6`}
-                className="transition-all duration-500"
+        {/* Bento 2: Progress */}
+        <div className="linear-card p-3 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-fa font-bold text-white/40">
+              پیشرفت کل
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
+          </div>
+
+          <div className="my-1">
+            <div className="flex items-baseline gap-1">
+              <span className="text-[24px] font-extrabold font-mono text-white tracking-tight leading-none">
+                {totalProgressPercent}
+              </span>
+              <span className="text-xs text-white/40 font-mono">%</span>
+            </div>
+
+            <div className="w-full bg-white/[0.04] h-1.5 rounded-full overflow-hidden mt-2">
+              <div
+                className="h-full bg-[#10B981] rounded-full transition-all duration-500"
+                style={{ width: `${totalProgressPercent}%` }}
               />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              {isWork ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round">
-                  <path d="M18 8h1a4 4 0 0 1 0 8h-1" />
-                  <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
-                  <line x1="6" y1="1" x2="6" y2="4" />
-                  <line x1="10" y1="1" x2="10" y2="4" />
-                </svg>
-              )}
             </div>
           </div>
 
-          {/* Time & Mode text */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-1">
-              <button
-                onClick={() => setPomodoroMode("work")}
-                className={`text-[9px] font-mono px-1.5 py-0.5 rounded transition-all cursor-pointer ${
-                  isWork
-                    ? "bg-[#F59E0B]/20 text-[#F59E0B] font-bold border border-[#F59E0B]/40"
-                    : "text-white/30 hover:text-white"
-                }`}
-              >
-                Focus (25m)
-              </button>
-              <button
-                onClick={() => setPomodoroMode("break")}
-                className={`text-[9px] font-mono px-1.5 py-0.5 rounded transition-all cursor-pointer ${
-                  !isWork
-                    ? "bg-[#10B981]/20 text-[#10B981] font-bold border border-[#10B981]/40"
-                    : "text-white/30 hover:text-white"
-                }`}
-              >
-                Break (5m)
-              </button>
+          <div className="text-[9.5px] text-white/30 font-mono mt-1 flex justify-between items-center">
+            <span className="font-fa text-white/40">تکمیل</span>
+            <span>{totalCheckedCount} / {totalLessonsCount}</span>
+          </div>
+        </div>
+
+        {/* Bento 3: Spaced Repetition Gate */}
+        <div
+          onClick={() => setActiveTab("review")}
+          className="linear-card p-3 flex flex-col justify-between cursor-pointer group hover:border-white/20 transition-all"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-fa font-bold text-white/40">
+              مرور هوشمند SM-2
+            </span>
+            <span className="text-[10px] text-white/40 group-hover:text-white transition-colors">↗</span>
+          </div>
+
+          <div className="flex items-center gap-2 my-1">
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              dueReviews.length > 0 ? "bg-rose-500/10 text-rose-400 border border-rose-500/30" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+            }`}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
             </div>
-            <div className="text-[20px] font-extrabold font-mono text-white tracking-tight leading-none">
-              {timeFormatted}
-            </div>
-            <div className="text-[10px] text-white/35 mt-1 truncate">
-              {pomodoroActive
-                ? isWork
-                  ? "Focus · Deep Systems Work"
-                  : "Break · Cognitive Reset"
-                : "Pomodoro Focus Ready"}
+            <div>
+              <div className="text-[13px] font-extrabold font-fa text-white leading-tight">
+                {dueReviews.length > 0 ? `${dueReviews.length} کارت آماده` : "به‌روز"}
+              </div>
+              <div className="text-[9px] text-white/40 font-fa mt-0.5">
+                {dueReviews.length > 0 ? "نیازمند مرور" : "حافظه پایدار"}
+              </div>
             </div>
           </div>
 
-          {/* Controls */}
-          <div className="flex items-center gap-1.5">
+          <div className="text-[9.5px] font-fa text-[#F59E0B] group-hover:underline text-right mt-1" dir="rtl">
+            ورود به مرور ←
+          </div>
+        </div>
+
+        {/* Bento 4: Pomodoro Focus Timer */}
+        <div className="linear-card p-3 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-fa font-bold text-white/40">
+              تمرکز عمیق
+            </span>
+            <button
+              onClick={() => setPomodoroMode(isWork ? "break" : "work")}
+              className="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-white/50"
+            >
+              {isWork ? "Focus" : "Break"}
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 my-1">
+            <div className="relative flex-shrink-0">
+              <svg width="32" height="32" className="-rotate-90">
+                <circle cx="16" cy="16" r="12" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2" />
+                <circle
+                  cx="16"
+                  cy="16"
+                  r="12"
+                  fill="none"
+                  stroke={isWork ? "#F59E0B" : "#10B981"}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeDasharray={`${pomodoroDash * 0.6} 75`}
+                  className="transition-all duration-500"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center text-[7.5px] font-mono font-bold text-white">
+                {minutes}m
+              </div>
+            </div>
+
+            <div className="text-right">
+              <div className="text-[15px] font-extrabold font-mono text-white tracking-tight">
+                {timeFormatted}
+              </div>
+              <div className="text-[8.5px] font-fa text-white/40">
+                {pomodoroActive ? (isWork ? "در حال تمرکز" : "استراحت") : "آماده"}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 mt-1">
             <button
               onClick={togglePomodoro}
-              className={`px-3 py-1.5 rounded-lg font-bold text-xs cursor-pointer transition-all ${
+              className={`flex-1 py-1 rounded-md text-[9.5px] font-bold font-fa cursor-pointer transition-all ${
                 pomodoroActive
-                  ? "bg-[#EF4444]/15 hover:bg-[#EF4444]/25 text-[#EF4444] border border-[#EF4444]/30"
-                  : isWork
-                  ? "bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-black font-semibold shadow-sm"
-                  : "bg-[#10B981] hover:bg-[#10B981]/90 text-black font-semibold shadow-sm"
+                  ? "bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30"
+                  : "bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-black font-extrabold"
               }`}
             >
-              {pomodoroActive ? "Pause" : "Start"}
+              {pomodoroActive ? "توقف" : "شروع"}
             </button>
             <button
               onClick={resetPomodoro}
-              title="Reset Timer"
-              className="w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white/40 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              title="بازنشانی تایمر"
+              className="w-5 h-5 rounded-md bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] flex items-center justify-center text-white/40 hover:text-white transition-colors cursor-pointer"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                 <path d="M3 3v5h5" />
               </svg>
             </button>
           </div>
         </div>
+
       </div>
 
-      {/* Daily Gate Lessons Card */}
-      <div className="linear-card overflow-hidden mb-5">
-        {/* Card Header */}
-        <div className="p-3.5 border-b border-white/[0.05] flex items-center justify-between">
-          <div>
-            <div className="text-[13px] font-bold text-white flex items-center gap-2">
-              <span>Daily Target</span>
-              <span className="text-[10px] font-fa text-white/30 font-normal" dir="rtl">
-                (برنامه امروز)
-              </span>
-            </div>
-            <div className="text-[10px] font-mono text-white/30 mt-0.5">
-              {planCompleted}/{planTotal} completed
-            </div>
+      {/* 5. Daily Curriculum Checklist */}
+      <section className="linear-card overflow-hidden mb-5">
+        <div className="p-3 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.01]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
+            <span className="text-[12px] font-bold text-white font-fa" dir="rtl">
+              فهرست دروس امروز
+            </span>
           </div>
 
           {isPlanAllDone && (
             <button
               onClick={unlockPlanNow}
-              className="text-[10px] font-bold text-[#F59E0B] bg-[#F59E0B]/10 hover:bg-[#F59E0B]/20 border border-[#F59E0B]/30 px-2.5 py-1 rounded-full transition-colors flex items-center gap-1 font-mono cursor-pointer"
+              className="text-[10px] font-bold text-black bg-[#F59E0B] hover:bg-[#F59E0B]/90 px-2.5 py-0.5 rounded-full transition-all flex items-center gap-1 font-fa cursor-pointer"
             >
-              <span>+ Unlock Next</span>
+              <span>+ درس‌های بیشتر</span>
             </button>
           )}
         </div>
@@ -298,7 +426,7 @@ export const TodayTab: React.FC = () => {
         {/* Lessons List */}
         {planLessonIds.length > 0 ? (
           <div className="divide-y divide-white/[0.04]">
-            {planLessonIds.map((lessonId, idx) => {
+            {planLessonIds.map((lessonId) => {
               const details = getLessonDetails(lessonId);
               if (!details) return null;
               const isDone = checked.includes(lessonId);
@@ -310,11 +438,11 @@ export const TodayTab: React.FC = () => {
               return (
                 <div
                   key={lessonId}
-                  className={`p-3.5 flex items-start gap-3 transition-opacity ${
-                    !isGateOpen && !isDone ? "opacity-60" : "opacity-100"
+                  className={`p-3 flex items-start gap-3 transition-all ${
+                    !isGateOpen && !isDone ? "opacity-60 bg-white/[0.01]" : "hover:bg-white/[0.02]"
                   }`}
                 >
-                  {/* Checkbox / Gate Indicator */}
+                  {/* Custom Checkbox */}
                   <button
                     onClick={() => {
                       if (isDone) {
@@ -322,18 +450,16 @@ export const TodayTab: React.FC = () => {
                       } else if (gateStatus.canComplete) {
                         toggleLesson(lessonId);
                       } else {
-                        // Open modal so user sees the gate reasons and can complete them
                         setSelectedLessonId(lessonId);
                       }
                     }}
                     title={
                       isDone
-                        ? "Mark incomplete"
+                        ? "علامت‌گذاری به عنوان انجام‌نشده"
                         : gateStatus.canComplete
-                        ? "Complete and enter into SM-2 cycle"
-                        : gateStatus.unmetReasons[0] || "Requirements locked"
+                        ? "تکمیل و ورود به چرخه SM-2"
+                        : gateStatus.unmetReasons[0] || "نیازمند مطالعه و حل پیش‌نیاز"
                     }
-                    aria-label={isDone ? "Mark incomplete" : "Mark complete"}
                     className={`w-5 h-5 rounded-md flex-shrink-0 mt-0.5 flex items-center justify-center cursor-pointer transition-all ${
                       isDone
                         ? "bg-[#F59E0B] border-2 border-[#F59E0B]"
@@ -345,8 +471,8 @@ export const TodayTab: React.FC = () => {
                     }`}
                   >
                     {isDone ? (
-                      <svg width="10" height="8" viewBox="0 0 11 9" fill="none">
-                        <path d="M1 4.5l3 3L10 1" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+                        <path d="M1 4.5l3 3L10 1" stroke="#000" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     ) : !gateStatus.isUnlocked ? (
                       <span className="text-[9px]">🔒</span>
@@ -355,51 +481,52 @@ export const TodayTab: React.FC = () => {
                     ) : null}
                   </button>
 
-                  {/* Text Details */}
+                  {/* Lesson Information */}
                   <div
                     onClick={() => setSelectedLessonId(lessonId)}
-                    className="flex-1 min-w-0 cursor-pointer"
+                    className="flex-1 min-w-0 cursor-pointer text-right"
+                    dir="rtl"
                   >
                     <div
-                      className={`text-[13px] font-medium leading-snug mb-0.5 ${
+                      className={`text-[13px] font-bold font-fa leading-snug mb-0.5 ${
                         isDone ? "text-white/30 line-through" : "text-white hover:text-[#F59E0B] transition-colors"
                       }`}
                     >
-                      {details.title}
-                    </div>
-                    <div className="text-[11px] text-white/35 font-fa leading-normal mb-1.5" dir="rtl">
                       {details.fa}
+                    </div>
+                    <div className="text-[11px] text-white/40 font-mono leading-normal mb-1.5" dir="ltr">
+                      {details.title}
                     </div>
 
                     {/* Meta Badges */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       {!isDone && !gateStatus.canComplete && (
-                        <span className="linear-badge bg-white/[0.04] text-white/40 border border-white/[0.06] text-[9px]">
-                          {!gateStatus.isUnlocked ? "Locked 🔒" : gateStatus.isGateLocked ? "Reviews Due ⛔" : "Gated ⏳"}
+                        <span className="linear-badge bg-rose-500/10 text-rose-300 border border-rose-500/20 text-[9px] font-fa">
+                          {!gateStatus.isUnlocked ? "قفل" : gateStatus.isGateLocked ? "مرور عقب‌افتاده" : "پیش‌نیاز"}
                         </span>
                       )}
                       {note?.text && (
-                        <span className="linear-badge bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/25">
-                          Note
+                        <span className="linear-badge bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/20 font-fa text-[9px]">
+                          جزوه تحلیلی
                         </span>
                       )}
                       {feynman?.text && (
-                        <span className="linear-badge bg-[#8B5CF6]/10 text-[#8B5CF6] border border-[#8B5CF6]/25">
-                          Feynman
+                        <span className="linear-badge bg-purple-500/10 text-purple-300 border border-purple-500/20 font-fa text-[9px]">
+                          سنتز فاینمن
                         </span>
                       )}
                       {diff > 0 && (
-                        <span className="linear-badge bg-white/[0.04] text-[#F59E0B] border border-white/[0.06]">
+                        <span className="linear-badge bg-white/[0.04] text-[#F59E0B] border border-white/[0.08]">
                           {"★".repeat(diff)}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Note / Detail Edit Button */}
+                  {/* Open Lesson Note Button */}
                   <button
                     onClick={() => setSelectedLessonId(lessonId)}
-                    aria-label="Edit note and study"
+                    aria-label="مشاهده و مطالعه جزوه استاندارد"
                     className="w-7 h-7 rounded-lg flex-shrink-0 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] flex items-center justify-center text-white/40 hover:text-white transition-colors cursor-pointer"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -412,15 +539,32 @@ export const TodayTab: React.FC = () => {
             })}
           </div>
         ) : (
-          <div className="p-6 text-center text-xs text-white/30 font-fa" dir="rtl">
-            برنامه امروز آماده شد! روی کلید «مسیر» (Path) بزنید تا درس‌های جدید را کاوش کنید.
+          <div className="p-6 text-center text-xs text-white/40 font-fa" dir="rtl">
+            برنامه امروز آماده شد! روی تب «مسیر» بزنید تا سرفصل‌های جدید را کاوش کنید.
           </div>
         )}
+      </section>
+
+      {/* 6. Systems Insight Card */}
+      <div className="linear-card p-3 border border-white/[0.05] bg-[#080808]">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[#F59E0B] text-xs">⚡</span>
+          <span className="text-[11px] font-bold text-white/70 font-fa">
+            اصل معماری سیستم و یادگیری
+          </span>
+        </div>
+        <p className="text-[11px] text-white/40 font-fa leading-relaxed text-right" dir="rtl">
+          «درک عمیق بدون مکانیسم واقعی غیرممکن است. همان‌طور که کش سیستم بدون شناخت سلسله‌مراتب حافظه سخت‌افزار بهینه نمی‌شود، یادگیری نیز بدون تثبیت در خواب عمیق و بازیابی فعال پایدار نخواهد ماند.»
+        </p>
       </div>
 
-      {/* Selected Lesson Modal */}
+      {/* 7. Lesson Modal Handler */}
       {selectedLessonId && (
-        <LessonModal lessonId={selectedLessonId} onClose={() => setSelectedLessonId(null)} />
+        <LessonModal
+          lessonId={selectedLessonId}
+          onClose={() => setSelectedLessonId(null)}
+          onSelectLesson={(id) => setSelectedLessonId(id)}
+        />
       )}
     </div>
   );

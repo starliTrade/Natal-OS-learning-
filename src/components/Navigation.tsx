@@ -8,7 +8,6 @@ export const Navigation: React.FC = () => {
   const tabs = [
     {
       id: "today" as const,
-      label: "Today",
       fa: "امروز",
       icon: (active: boolean) => (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? "#F59E0B" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -26,7 +25,6 @@ export const Navigation: React.FC = () => {
     },
     {
       id: "path" as const,
-      label: "Path",
       fa: "مسیر",
       icon: (active: boolean) => (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? "#F59E0B" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -37,7 +35,6 @@ export const Navigation: React.FC = () => {
     },
     {
       id: "review" as const,
-      label: "Review",
       fa: "مرور",
       badge: reviewCount,
       icon: (active: boolean) => (
@@ -51,7 +48,6 @@ export const Navigation: React.FC = () => {
     },
     {
       id: "stats" as const,
-      label: "Stats",
       fa: "شاخص‌ها",
       icon: (active: boolean) => (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? "#F59E0B" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -63,8 +59,7 @@ export const Navigation: React.FC = () => {
     },
     {
       id: "you" as const,
-      label: "You",
-      fa: "شما",
+      fa: "پروفایل",
       icon: (active: boolean) => (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? "#F59E0B" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
@@ -79,6 +74,7 @@ export const Navigation: React.FC = () => {
       id="bottom-nav-bar"
       className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] z-50 bg-[#050505]/95 backdrop-blur-2xl border-t border-white/[0.05] flex items-center justify-around pt-2 pb-[calc(10px+env(safe-area-inset-bottom,0px))]"
       role="tablist"
+      dir="rtl"
     >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
@@ -93,30 +89,23 @@ export const Navigation: React.FC = () => {
             className="flex-1 flex flex-col items-center gap-1 cursor-pointer bg-transparent border-none py-1 relative transition-all duration-200 group"
           >
             <div className="relative">
-              <div className={`transition-transform duration-200 ${isActive ? "scale-105" : "group-hover:scale-105"}`}>
+              <div className={`transition-transform duration-200 ${isActive ? "scale-105 text-[#F59E0B]" : "text-white/40 group-hover:text-white/70 group-hover:scale-105"}`}>
                 {tab.icon(isActive)}
               </div>
               {hasDue && (
                 <span
                   id="nav-due-counter"
-                  className="absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 rounded-full bg-[#EF4444] border border-[#080808] flex items-center justify-center text-[8px] font-bold text-white font-mono leading-none shadow-sm"
+                  className="absolute -top-1.5 -left-2 min-w-[15px] h-[15px] px-1 rounded-full bg-[#EF4444] border border-[#080808] flex items-center justify-center text-[8px] font-bold text-white font-mono leading-none shadow-sm"
                 >
-                  {reviewCount > 9 ? "9+" : reviewCount}
+                  {reviewCount > 9 ? "+۹" : reviewCount}
                 </span>
               )}
             </div>
 
-            <div className="flex flex-col items-center leading-none">
+            <div className="flex flex-col items-center leading-none mt-0.5">
               <span
-                className={`text-[10px] tracking-tight transition-colors duration-200 font-sans ${
+                className={`text-[10px] font-fa transition-colors duration-200 ${
                   isActive ? "text-[#F59E0B] font-bold" : "text-white/40 group-hover:text-white/70 font-medium"
-                }`}
-              >
-                {tab.label}
-              </span>
-              <span
-                className={`text-[8px] font-fa transition-colors duration-200 mt-0.5 ${
-                  isActive ? "text-[#F59E0B]/80 font-semibold" : "text-white/20 group-hover:text-white/40"
                 }`}
               >
                 {tab.fa}
@@ -125,7 +114,7 @@ export const Navigation: React.FC = () => {
 
             {/* Active Pill Indicator */}
             {isActive && (
-              <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[2px] rounded-full bg-[#F59E0B] opacity-80" />
+              <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[2px] rounded-full bg-[#F59E0B] opacity-90" />
             )}
           </button>
         );

@@ -51,14 +51,14 @@ export const YouTab: React.FC<YouTabProps> = ({ onOpenCurriculumEditor }) => {
   };
 
   return (
-    <div id="you-tab" className="px-4 pt-5 pb-8 font-sans w-full max-w-[440px] mx-auto text-white">
+    <div id="you-tab" className="px-4 pt-4 pb-12 font-sans w-full max-w-[460px] mx-auto text-slate-100 selection:bg-[#00F5A0] selection:text-black">
       {/* Top Header */}
       <div className="mb-4">
-        <div className="text-[11px] font-semibold text-white/30 tracking-widest uppercase font-mono mb-1">
-          Preferences & Identity
+        <div className="text-[10px] font-bold text-[#00F5A0] tracking-widest uppercase font-mono mb-0.5">
+          ENGINEER PROFILE & SETTINGS
         </div>
-        <div className="text-[28px] font-extrabold text-white tracking-tight leading-none">
-          You
+        <div className="text-[26px] font-extrabold text-white tracking-tight leading-none font-fa" dir="rtl">
+          پروفایل و تنظیمات
         </div>
       </div>
 

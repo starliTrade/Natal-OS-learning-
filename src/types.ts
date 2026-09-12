@@ -102,6 +102,7 @@ export interface LessonGateStatus {
   quizResult?: QuizResult;      // Stored score
   unmetReasons: string[];       // Human-readable list of what is holding it back
   prerequisiteTitle?: string;   // Title of prerequisite lesson if locked
+  prerequisiteId?: string;      // ID of the blocking prerequisite lesson
   dueReviewsCount: number;      // Number of due reviews blocking new learning
   completedTodayCount: number;  // Lessons finished today
   dailyBudget: number;          // Max allowed for today

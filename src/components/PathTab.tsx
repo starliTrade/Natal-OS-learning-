@@ -78,25 +78,25 @@ export const PathTab: React.FC<PathTabProps> = ({ onOpenCurriculumEditor }) => {
     : { total: 0, completed: 0, pct: 0 };
 
   return (
-    <div id="path-tab" className="px-4 pt-5 pb-8 font-sans w-full max-w-[440px] mx-auto text-white">
+    <div id="path-tab" className="px-4 pt-4 pb-12 font-sans w-full max-w-[460px] mx-auto text-slate-100 selection:bg-[#00F5A0] selection:text-black">
       {/* Top Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
-          <div className="text-[11px] font-semibold text-white/30 tracking-widest uppercase font-mono mb-1">
-            Curriculum
+          <div className="text-[10px] font-bold text-[#00F5A0] tracking-widest uppercase font-mono mb-0.5">
+            CS & AI CURRICULUM ROADMAP
           </div>
-          <div className="text-[28px] font-extrabold text-white tracking-tight leading-none">
-            Path
+          <div className="text-[26px] font-extrabold text-white tracking-tight leading-none font-fa" dir="rtl">
+            نقشه راه یادگیری
           </div>
         </div>
 
         {/* Architect Curriculum Button */}
         <button
           onClick={onOpenCurriculumEditor}
-          title="Architect Curriculum"
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white text-[11px] font-mono rounded-lg border border-white/[0.08] transition-colors cursor-pointer mt-1"
+          title="معماری و ویرایش سرفصل‌ها"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00F5A0]/10 hover:bg-[#00F5A0]/20 text-[#00F5A0] text-[11px] font-fa rounded-xl border border-[#00F5A0]/30 transition-all cursor-pointer mt-1"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="4" y1="21" x2="4" y2="14" />
             <line x1="4" y1="10" x2="4" y2="3" />
             <line x1="12" y1="21" x2="12" y2="12" />
@@ -107,13 +107,13 @@ export const PathTab: React.FC<PathTabProps> = ({ onOpenCurriculumEditor }) => {
             <line x1="9" y1="8" x2="15" y2="8" />
             <line x1="17" y1="16" x2="23" y2="16" />
           </svg>
-          <span>Curriculum</span>
+          <span>ویرایشگر نقشه</span>
         </button>
       </div>
 
       {/* Search Input */}
       <div className="relative mb-4">
-        <div className="absolute left-3 top-2.5 text-white/30 pointer-events-none">
+        <div className="absolute left-3 top-2.5 text-slate-400 pointer-events-none">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -123,13 +123,14 @@ export const PathTab: React.FC<PathTabProps> = ({ onOpenCurriculumEditor }) => {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search lessons, kernels, distributed systems..."
-          className="w-full bg-[#111111] border border-white/[0.07] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-white/25 focus:outline-none focus:border-[#F59E0B]/50 transition-colors font-sans"
+          placeholder="جستجوی درس‌ها، سیستم‌ها، کرنل و هوش مصنوعی..."
+          className="w-full bg-[#090d16] border border-white/[0.08] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00F5A0]/50 transition-colors font-fa"
+          dir="rtl"
         />
         {searchQuery && (
           <button
             onClick={() => setSearchQuery("")}
-            className="absolute right-3 top-2.5 text-white/30 hover:text-white text-xs font-mono"
+            className="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs font-mono"
           >
             ✕
           </button>
@@ -472,7 +473,11 @@ export const PathTab: React.FC<PathTabProps> = ({ onOpenCurriculumEditor }) => {
 
       {/* Lesson Modal */}
       {selectedLessonId && (
-        <LessonModal lessonId={selectedLessonId} onClose={() => setSelectedLessonId(null)} />
+        <LessonModal
+          lessonId={selectedLessonId}
+          onClose={() => setSelectedLessonId(null)}
+          onSelectLesson={(id) => setSelectedLessonId(id)}
+        />
       )}
     </div>
   );

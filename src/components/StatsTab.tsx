@@ -43,14 +43,14 @@ export const StatsTab: React.FC = () => {
   const completionPct = totalLessonsCount > 0 ? Math.round((completedLessonsCount / totalLessonsCount) * 100) : 0;
 
   return (
-    <div id="stats-tab" className="px-4 pt-5 pb-8 font-sans w-full max-w-[440px] mx-auto text-white">
+    <div id="stats-tab" className="px-4 pt-4 pb-12 font-sans w-full max-w-[460px] mx-auto text-slate-100 selection:bg-[#00F5A0] selection:text-black">
       {/* Top Header */}
       <div className="mb-4">
-        <div className="text-[11px] font-semibold text-white/30 tracking-widest uppercase font-mono mb-1">
-          Metrics & Velocity
+        <div className="text-[10px] font-bold text-[#00F5A0] tracking-widest uppercase font-mono mb-0.5">
+          ENGINEERING METRICS & VELOCITY
         </div>
-        <div className="text-[28px] font-extrabold text-white tracking-tight leading-none">
-          Stats
+        <div className="text-[26px] font-extrabold text-white tracking-tight leading-none font-fa" dir="rtl">
+          شاخص‌ها و آمار یادگیری
         </div>
       </div>
 
